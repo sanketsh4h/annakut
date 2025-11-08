@@ -1,0 +1,1315 @@
+:not(:defined) > * {
+    display: none;
+  }
+  
+  html {
+    height: 100%;
+  }
+  
+  body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+      Oxygen, Ubuntu, Cantarell, sans-serif;
+  }
+  
+  model-viewer {
+    width: 100%;
+    height: 90%;
+    background-color: hsl(215, 25%, 49%);
+  }
+  
+  /* Hide model viewer in portrait mode on mobile */
+  @media (orientation: portrait) and (max-width: 767px) {
+    model-viewer {
+      display: none;
+    }
+  
+    body {
+      overflow: hidden;
+    }
+  }
+  
+  /* ============================================
+     OVERLAY MESSAGE BOX
+     ============================================ */
+  
+  .overlay-message {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 9999;
+    width: 90%;
+    max-width: 500px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+  }
+  
+  .overlay-message.show {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  
+  .overlay-content {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(15px);
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    position: relative;
+    max-height: 70vh;
+    overflow-y: auto;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+      Oxygen, Ubuntu, Cantarell, sans-serif;
+  }
+  
+  .overlay-content h3 {
+    font-size: 24px;
+    font-weight: 600;
+    margin: 0;
+    color: #333;
+    flex: 1;
+  }
+  
+  .overlay-content p {
+    font-size: 16px;
+    line-height: 1.6;
+    margin: 0 0 16px 0;
+    color: #666;
+    position: relative;
+  }
+  
+  .overlay-content p > span:not(.overlay-pulse-indicator) {
+    display: block;
+  }
+  
+  .overlay-content p:last-child {
+    margin-bottom: 0;
+  }
+  
+  .overlay-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    gap: 16px;
+  }
+  
+  .overlay-close {
+    position: static;
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    min-height: 36px;
+    padding: 0;
+    background-color: rgba(0, 0, 0, 0.1);
+    color: #333;
+    border: 2px solid rgba(0, 0, 0, 0.2);
+    border-radius: 50%;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+    transition: background-color 0.2s ease, transform 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-sizing: border-box;
+    position: relative;
+  }
+  
+  /* Create X icon using CSS */
+  .overlay-close::before,
+  .overlay-close::after {
+    content: '';
+    position: absolute;
+    width: 2px;
+    height: 18px;
+    background-color: #333;
+    border-radius: 1px;
+  }
+  
+  .overlay-close::before {
+    transform: rotate(45deg);
+  }
+  
+  .overlay-close::after {
+    transform: rotate(-45deg);
+  }
+  
+  .overlay-close:hover {
+    background-color: rgba(0, 0, 0, 0.2);
+    border-color: rgba(0, 0, 0, 0.3);
+    transform: scale(1.1);
+  }
+  
+  .overlay-close:active {
+    background-color: rgba(0, 0, 0, 0.3);
+    transform: scale(0.95);
+  }
+  
+  /* Pulsating circle indicator */
+  .overlay-pulse-indicator {
+    width: 24px;
+    height: 24px;
+    background: #ffdf00;
+    border-radius: 50%;
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+    pointer-events: none;
+    z-index: 1;
+    transform: translate(50%, 50%);
+  }
+  
+  .overlay-pulse-indicator::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 223, 0, 0.6);
+    animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    pointer-events: none;
+    transform: translate(-50%, -50%);
+    transform-origin: center center;
+    box-sizing: border-box;
+  }
+  
+  /* Mobile adjustments */
+  @media (max-width: 767px) {
+    .overlay-message {
+      width: 85%;
+      max-width: 400px;
+    }
+  
+    .overlay-content {
+      padding: 20px;
+      border-radius: 12px;
+    }
+  
+    .overlay-header {
+      margin-bottom: 12px;
+      gap: 12px;
+    }
+  
+    .overlay-content h3 {
+      font-size: 20px;
+    }
+  
+    .overlay-content p {
+      font-size: 14px;
+      margin-bottom: 12px;
+    }
+  
+    .overlay-close {
+      width: 32px;
+      height: 32px;
+      min-width: 32px;
+      min-height: 32px;
+    }
+  
+    .overlay-close::before,
+    .overlay-close::after {
+      height: 14px;
+      width: 2px;
+    }
+  
+    .overlay-pulse-indicator {
+      width: 20px;
+      height: 20px;
+      transform: translate(40%, 40%);
+    }
+  }
+  
+  /* ============================================
+     ORIENTATION MESSAGE (Mobile Portrait)
+     ============================================ */
+  
+  .orientation-message {
+    display: none;
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100vh;
+    height: 100dvh;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    z-index: 10000;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    box-sizing: border-box;
+  }
+  
+  .orientation-message.show {
+    display: flex;
+  }
+  
+  .orientation-content {
+    text-align: center;
+    color: white;
+    max-width: 300px;
+    padding: 30px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  }
+  
+  .orientation-icon {
+    font-size: 64px;
+    margin-bottom: 20px;
+    animation: rotate 2s ease-in-out infinite;
+  }
+  
+  @keyframes rotate {
+    0%,
+    100% {
+      transform: rotate(0deg);
+    }
+    50% {
+      transform: rotate(90deg);
+    }
+  }
+  
+  .orientation-content h2 {
+    font-size: 24px;
+    margin-bottom: 16px;
+    font-weight: 600;
+  }
+  
+  .orientation-content p {
+    font-size: 16px;
+    line-height: 1.6;
+    margin: 0;
+    opacity: 0.95;
+  }
+  
+  /* Show orientation message in portrait mode on mobile */
+  @media (orientation: portrait) and (max-width: 767px) {
+    .orientation-message {
+      display: flex;
+    }
+  }
+  
+  /* Hide orientation message in landscape or on larger screens */
+  @media (orientation: landscape), (min-width: 768px) {
+    .orientation-message {
+      display: none !important;
+    }
+  }
+  
+  /* Mobile landscape orientation */
+  @media (orientation: landscape) and (max-height: 600px) {
+    model-viewer {
+      height: 100vh;
+      min-height: 100%;
+    }
+  
+    body {
+      overflow: hidden;
+    }
+  }
+  
+  /* Pulsating animation keyframes */
+  @keyframes pulse {
+    0%,
+    100% {
+      transform: scale(1);
+      box-shadow: 0 0 0 0 rgba(255, 223, 0, 0.7);
+    }
+    50% {
+      transform: scale(1.12);
+      box-shadow: 0 0 0 8px rgba(255, 223, 0, 0);
+    }
+  }
+  
+  /* Pulsating ring animation */
+  @keyframes pulse-ring {
+    0% {
+      transform: translate(-50%, -50%) scale(1);
+      opacity: 0.6;
+    }
+    100% {
+      transform: translate(-50%, -50%) scale(3);
+      opacity: 0;
+    }
+  }
+  
+  /* Pulsating word animation */
+  .pulsating-word {
+    color: rgb(226, 152, 5);
+    font-weight: 600;
+    display: inline-block;
+    text-decoration: underline;
+    position: relative;
+    z-index: 2;
+  }
+  
+  .Hotspot {
+    background: #ffdf00;
+    border-radius: 50%;
+    border: 0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+    box-sizing: border-box;
+    cursor: pointer;
+    width: 48px;
+    height: 48px;
+    padding: 0;
+    position: relative;
+    transition: opacity 0.3s;
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  /* Maroon colored number in hotspot */
+  .hotspot-number {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #800020;
+    font-size: 20px;
+    font-weight: 700;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+      Oxygen, Ubuntu, Cantarell, sans-serif;
+    z-index: 2;
+    pointer-events: none;
+    text-align: center;
+    line-height: 1;
+    user-select: none;
+    -webkit-user-select: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  /* Pulsating ring effect using pseudo-element */
+  .Hotspot::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 223, 0, 0.6);
+    animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    pointer-events: none;
+    transform: translate(-50%, -50%);
+    transform-origin: center center;
+    box-sizing: border-box;
+  }
+  
+  .Hotspot:active {
+    transform: scale(0.95);
+    animation: none;
+  }
+  
+  .Hotspot:active::before {
+    animation-play-state: paused;
+  }
+  
+  .Hotspot:not([data-visible]) {
+    background: transparent;
+    border: 4px solid #fff;
+    box-shadow: none;
+    height: 32px;
+    pointer-events: none;
+    width: 32px;
+  }
+  
+  .Hotspot:focus {
+    border: 4px solid rgb(0, 128, 200);
+    height: 32px;
+    outline: none;
+    width: 32px;
+  }
+  
+  .Hotspot > * {
+    opacity: 1;
+    transform: translateY(-50%);
+  }
+  
+  /* Override transform for hotspot numbers to keep them centered */
+  .Hotspot > .hotspot-number {
+    transform: translate(-50%, -50%);
+  }
+  
+  .HotspotAnnotation {
+    background: #fff;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+    color: rgba(0, 0, 0, 0.8);
+    display: none; /* Hidden by default - content shown in modal when clicked */
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+      Oxygen, Ubuntu, Cantarell, sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    left: calc(100% + 1em);
+    max-width: 128px;
+    overflow-wrap: break-word;
+    padding: 0.5em 1em;
+    position: absolute;
+    top: 50%;
+    width: max-content;
+  }
+  
+  .Hotspot:not([data-visible]) > * {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(calc(-50% + 4px));
+    transition: transform 0.3s, opacity 0.3s;
+  }
+  
+  .progress-bar {
+    display: block;
+    width: 33%;
+    height: 10%;
+    max-height: 2%;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate3d(-50%, -50%, 0);
+    border-radius: 25px;
+    box-shadow: 0px 3px 10px 3px rgba(0, 0, 0, 0.5),
+      0px 0px 5px 1px rgba(0, 0, 0, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.9);
+    background-color: rgba(0, 0, 0, 0.5);
+  }
+  
+  .progress-bar.hide {
+    visibility: hidden;
+    transition: visibility 0.3s;
+  }
+  
+  .update-bar {
+    background-color: rgba(255, 255, 255, 0.9);
+    width: 0%;
+    height: 100%;
+    border-radius: 25px;
+    float: left;
+    transition: width 0.3s;
+  }
+  
+  #ar-button:active {
+    background-color: #e8eaed;
+  }
+  
+  #ar-button:focus {
+    outline: none;
+  }
+  
+  #ar-button:focus-visible {
+    outline: 1px solid #4285f4;
+  }
+  
+  @keyframes circle {
+    from {
+      transform: translateX(-50%) rotate(0deg) translateX(50px) rotate(0deg);
+    }
+    to {
+      transform: translateX(-50%) rotate(360deg) translateX(50px) rotate(-360deg);
+    }
+  }
+  
+  @keyframes elongate {
+    from {
+      transform: translateX(100px);
+    }
+    to {
+      transform: translateX(-100px);
+    }
+  }
+  
+  model-viewer > #ar-prompt {
+    position: absolute;
+    left: 50%;
+    bottom: 60px;
+    animation: elongate 2s infinite ease-in-out alternate;
+    display: none;
+  }
+  
+  model-viewer[ar-status='session-started'] > #ar-prompt {
+    display: block;
+  }
+  
+  model-viewer > #ar-prompt > img {
+    animation: circle 4s linear infinite;
+  }
+  
+  /* ============================================
+     MODAL CONTAINER
+     ============================================ */
+  
+  .modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    max-width: 100%;
+    height: 100dvh; /* Dynamic viewport height for mobile */
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 32px;
+    padding-top: max(16px, env(safe-area-inset-top));
+    padding-bottom: max(100px, env(safe-area-inset-bottom));
+    padding-left: max(16px, env(safe-area-inset-left));
+    padding-right: max(16px, env(safe-area-inset-right));
+    background: white;
+    z-index: 1000;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+    touch-action: pan-y; /* Enable vertical scrolling on mobile */
+    box-sizing: border-box;
+  }
+  
+  .modal.modal-open {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  
+  .modal.modal-closing {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.3s cubic-bezier(0.4, 0, 1, 1),
+      transform 0.3s cubic-bezier(0.4, 0, 1, 1);
+  }
+  
+  .modal-content {
+    padding: 8px 4px 20px 4px;
+    padding-left: max(4px, env(safe-area-inset-left));
+    padding-right: max(4px, env(safe-area-inset-right));
+    padding-bottom: max(20px, calc(20px + env(safe-area-inset-bottom)));
+    padding-top: max(16px, calc(16px + env(safe-area-inset-top)));
+    width: 100%;
+    max-width: 100%;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    box-sizing: border-box;
+  }
+  
+  .modal-title-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+    width: 100%;
+    flex-wrap: nowrap;
+    box-sizing: border-box;
+    position: relative;
+  }
+  
+  .modal-title-header .modal-title {
+    flex: 1;
+    min-width: 0; /* Allow text to wrap if needed */
+    padding-right: 12px; /* Space from X button */
+    margin: 0;
+  }
+  
+  .modal-title-header .modal-close-x {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    min-height: 36px;
+    padding: 0;
+    background-color: rgba(0, 0, 0, 0.1);
+    color: #333;
+    border: 2px solid rgba(0, 0, 0, 0.2);
+    border-radius: 50%;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+    transition: background-color 0.2s ease, transform 0.2s ease,
+      border-color 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    box-sizing: border-box;
+  }
+  
+  /* Create X icon using CSS */
+  .modal-title-header .modal-close-x::before,
+  .modal-title-header .modal-close-x::after {
+    content: '';
+    position: absolute;
+    width: 2px;
+    height: 18px;
+    background-color: #333;
+    border-radius: 1px;
+  }
+  
+  .modal-title-header .modal-close-x::before {
+    transform: rotate(45deg);
+  }
+  
+  .modal-title-header .modal-close-x::after {
+    transform: rotate(-45deg);
+  }
+  
+  .modal-title-header .modal-close-x:hover {
+    background-color: rgba(0, 0, 0, 0.2);
+    border-color: rgba(0, 0, 0, 0.3);
+    transform: scale(1.1);
+  }
+  
+  .modal-title-header .modal-close-x:active {
+    background-color: rgba(0, 0, 0, 0.3);
+    transform: scale(0.95);
+  }
+  
+  .modal h2 {
+    font-size: clamp(20px, 5vw, 22px);
+    margin: 0;
+    line-height: 1.3;
+    flex: 1;
+  }
+  
+  .modal-subtitle {
+    font-size: clamp(13px, 3vw, 15px);
+    font-weight: 600;
+    color: #3366ff;
+    margin: -8px 0 12px 0;
+    line-height: 1.4;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+      Oxygen, Ubuntu, Cantarell, sans-serif;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  
+  .modal-lang-toggle {
+    background: white;
+    border: 2px solid #3366ff;
+    border-radius: 20px;
+    margin: 16px auto;
+    padding: 6px 12px;
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: all 0.2s ease;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+      Oxygen, Ubuntu, Cantarell, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    flex-shrink: 0;
+    -webkit-tap-highlight-color: transparent;
+    box-shadow: 0 2px 4px rgba(51, 102, 255, 0.2);
+    min-width: 90px;
+  }
+  
+  .modal-lang-toggle .lang-option {
+    color: #3366ff;
+    transition: all 0.2s ease;
+    font-weight: 600;
+  }
+  
+  .modal-lang-toggle .lang-option.active {
+    font-weight: 700;
+    opacity: 1;
+  }
+  
+  .modal-lang-toggle .lang-option:not(.active) {
+    opacity: 0.6;
+  }
+  
+  .modal-lang-toggle .lang-arrow {
+    color: #3366ff;
+    font-size: 16px;
+    font-weight: 600;
+  }
+  
+  .modal-lang-toggle:hover {
+    background: #f8f9ff;
+    border-color: #2d5ce6;
+    box-shadow: 0 3px 6px rgba(51, 102, 255, 0.3);
+    transform: scale(1.02);
+  }
+  
+  .modal-lang-toggle:active {
+    background: white;
+    transform: scale(0.98);
+    box-shadow: 0 1px 2px rgba(51, 102, 255, 0.2);
+  }
+  
+  .modal p {
+    font-size: clamp(14px, 4vw, 16px);
+    margin-bottom: 14px;
+    line-height: 1.7;
+    word-spacing: normal;
+    letter-spacing: 0.01em;
+  }
+  
+  .modal-image {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    height: auto;
+    max-height: 60vh; /* Limit height for mobile */
+    display: block;
+    margin: 0 auto;
+    margin-top: 16px;
+    margin-bottom: 16px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    object-fit: contain;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+  
+  .modal-text {
+    font-size: clamp(14px, 4vw, 16px);
+    line-height: 1.7;
+    color: #333;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+      Oxygen, Ubuntu, Cantarell, sans-serif;
+  }
+  
+  .modal-text.gujarati-text {
+    font-family: 'Noto Serif Gujarati', 'Inter', -apple-system, BlinkMacSystemFont,
+      'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  }
+  
+  /* ============================================
+     MODAL NAVIGATION BUTTONS
+     ============================================ */
+  
+  .modal-navigation {
+    display: flex;
+    gap: 12px;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+  }
+  
+  .modal-nav-btn {
+    flex: 1;
+    padding: 14px 20px;
+    background-color: #3366ff;
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: all 0.2s ease;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+      Oxygen, Ubuntu, Cantarell, sans-serif;
+    text-align: center;
+    box-shadow: 0 4px 12px rgba(51, 102, 255, 0.3);
+    -webkit-tap-highlight-color: rgba(51, 102, 255, 0.3);
+    min-height: 48px;
+    box-sizing: border-box;
+  }
+  
+  .modal-nav-btn:hover:not(:disabled) {
+    background-color: #2d5ce6;
+    box-shadow: 0 6px 16px rgba(51, 102, 255, 0.4);
+    transform: translateY(-2px);
+  }
+  
+  .modal-nav-btn:active:not(:disabled) {
+    background-color: #2851cc;
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(51, 102, 255, 0.3);
+  }
+  
+  .modal-nav-btn:disabled {
+    background-color: #e0e0e0;
+    color: #999;
+    cursor: not-allowed;
+    box-shadow: none;
+    opacity: 0.5;
+  }
+  
+  /* Mobile-specific image sizing for landscape images */
+  @media (max-width: 767px) {
+    .modal {
+      width: 100%;
+      max-width: 100%;
+      left: 0;
+      right: 0;
+    }
+  
+    .modal-image {
+      max-width: 100%;
+      width: 100%;
+      height: auto;
+      /* For landscape images, use aspect ratio based sizing */
+      aspect-ratio: 16 / 9;
+      max-height: 60vh; /* Good height for landscape images */
+      object-fit: cover; /* Fill the space nicely for landscape */
+    }
+  }
+  
+  /* Mobile landscape orientation - optimize for landscape images */
+  @media (orientation: landscape) and (max-width: 767px) {
+    .modal {
+      width: 100%;
+      max-width: 100%;
+      left: 0;
+      right: 0;
+    }
+  
+    .modal-image {
+      max-height: 65vh; /* More height available in landscape */
+      aspect-ratio: 16 / 9;
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+      object-fit: contain; /* Keep full image visible */
+      margin-top: 12px;
+      margin-bottom: 12px;
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+  
+    .modal-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
+    }
+  
+    .modal h2 {
+      margin-bottom: 8px;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .modal-image {
+      max-height: 55vh; /* Optimized for small screens */
+      aspect-ratio: 16 / 9;
+    }
+  
+    .hotspot-number {
+      font-size: 16px;
+    }
+  }
+  
+  /* ============================================
+     MODAL BACKDROP
+     ============================================ */
+  
+  .modal-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 999;
+    opacity: 0;
+    transition: opacity 0.3s ease-out;
+  }
+  
+  .modal-backdrop.backdrop-open {
+    opacity: 1;
+  }
+  
+  .modal-backdrop.backdrop-closing {
+    opacity: 0;
+    transition: opacity 0.3s cubic-bezier(0.4, 0, 1, 1);
+  }
+  
+  /* ============================================
+     CLOSE BUTTON (Bottom)
+     ============================================ */
+  
+  .modal-close-btn {
+    width: 100%;
+    max-width: 300px;
+    margin: 24px auto 0 auto;
+    padding: 14px 24px;
+    background-color: #3366ff;
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: all 0.2s ease;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+      Oxygen, Ubuntu, Cantarell, sans-serif;
+    display: block;
+    text-align: center;
+    box-shadow: 0 4px 12px rgba(51, 102, 255, 0.3);
+    -webkit-tap-highlight-color: rgba(51, 102, 255, 0.3);
+    min-height: 48px;
+    box-sizing: border-box;
+  }
+  
+  .modal-close-btn:hover {
+    background-color: #2d5ce6;
+    box-shadow: 0 6px 16px rgba(51, 102, 255, 0.4);
+    transform: translateY(-2px);
+  }
+  
+  .modal-close-btn:active {
+    background-color: #2851cc;
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(51, 102, 255, 0.3);
+  }
+  
+  /* ============================================
+     MOBILE PORTRAIT OPTIMIZATION
+     ============================================ */
+  
+  @media (max-width: 767px) {
+    .hotspot-number {
+      font-size: 18px;
+    }
+  
+    .modal {
+      padding: 12px;
+      padding-top: max(12px, env(safe-area-inset-top));
+      padding-bottom: max(90px, env(safe-area-inset-bottom));
+    }
+  
+    .modal-content {
+      padding: 6px 2px 16px 2px;
+      padding-left: max(2px, env(safe-area-inset-left));
+      padding-right: max(2px, env(safe-area-inset-right));
+      padding-bottom: max(16px, calc(16px + env(safe-area-inset-bottom)));
+    }
+  
+    .modal-title-header {
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+  
+    .modal-title-header .modal-title {
+      padding-right: 6px;
+    }
+  
+    .modal-title-header .modal-close-x {
+      width: 32px;
+      height: 32px;
+      min-width: 32px;
+      min-height: 32px;
+    }
+  
+    .modal-title-header .modal-close-x::before,
+    .modal-title-header .modal-close-x::after {
+      height: 14px;
+      width: 2px;
+    }
+  
+    .modal-close-btn {
+      max-width: 280px;
+      padding: 12px 20px;
+      font-size: 15px;
+      margin-top: 20px;
+      margin-bottom: max(8px, env(safe-area-inset-bottom));
+    }
+  
+    .modal h2 {
+      font-size: 20px;
+      margin-bottom: 0;
+    }
+  
+    .modal-subtitle {
+      font-size: 12px;
+      font-weight: 600;
+      color: #3366ff;
+      letter-spacing: 0.4px;
+      margin: -6px 0 10px 0;
+    }
+  
+    .modal-lang-toggle {
+      padding: 5px 10px;
+      font-size: 13px;
+      min-width: 80px;
+      gap: 6px;
+    }
+  
+    .modal-lang-toggle .lang-arrow {
+      font-size: 14px;
+    }
+  
+    .modal p {
+      font-size: 15px;
+      margin-bottom: 14px;
+    }
+  
+    .modal-close-btn {
+      max-width: 280px;
+      padding: 12px 20px;
+      font-size: 15px;
+      margin-bottom: max(8px, env(safe-area-inset-bottom));
+    }
+  }
+  
+  /* ============================================
+     MOBILE LANDSCAPE OPTIMIZATION
+     ============================================ */
+  
+  @media (orientation: landscape) and (max-height: 600px) {
+    /* Make modal fit better in landscape */
+    .modal {
+      padding: 12px;
+      padding-top: max(12px, env(safe-area-inset-top));
+      padding-bottom: max(80px, env(safe-area-inset-bottom));
+      max-height: 100vh;
+    }
+  
+    .modal-image {
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+      height: auto;
+      max-height: 80vh;
+      object-fit: cover;
+      box-sizing: border-box;
+    }
+  
+    .modal-content {
+      padding: 4px 2px 12px 2px;
+      padding-left: max(2px, env(safe-area-inset-left));
+      padding-right: max(2px, env(safe-area-inset-right));
+      padding-bottom: max(12px, calc(12px + env(safe-area-inset-bottom)));
+    }
+  
+    .modal-title-header {
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+  
+    .modal-title-header .modal-title {
+      padding-right: 5px;
+    }
+  
+    .modal-close-btn {
+      max-width: 260px;
+      padding: 10px 18px;
+      font-size: 14px;
+      margin-top: 16px;
+      margin-bottom: max(8px, env(safe-area-inset-bottom));
+    }
+  
+    .modal h2 {
+      font-size: 18px;
+      margin-bottom: 0;
+    }
+  
+    .modal-subtitle {
+      font-size: 11px;
+      font-weight: 600;
+      color: #3366ff;
+      letter-spacing: 0.4px;
+      margin: -6px 0 8px 0;
+    }
+  
+    .modal-lang-toggle {
+      padding: 4px 8px;
+      font-size: 12px;
+      min-width: 75px;
+      gap: 5px;
+    }
+  
+    .modal-lang-toggle .lang-arrow {
+      font-size: 13px;
+    }
+  
+    .modal p {
+      font-size: 13px;
+      margin-bottom: 12px;
+      line-height: 1.6;
+    }
+  
+    .modal-close {
+      width: 38px;
+      height: 38px;
+      min-width: 38px;
+      min-height: 38px;
+      top: max(12px, env(safe-area-inset-top));
+      right: max(12px, env(safe-area-inset-right));
+    }
+  
+    .modal-close::before,
+    .modal-close::after {
+      height: 15px;
+      width: 2px;
+    }
+  
+    /* Adjust hotspot size for better visibility in landscape */
+    .Hotspot {
+      height: 28px;
+      width: 28px;
+    }
+  
+    .hotspot-number {
+      font-size: 14px;
+    }
+  }
+  
+  /* Small mobile devices */
+  @media (max-width: 480px) {
+    .modal {
+      padding: 10px;
+      padding-top: max(10px, env(safe-area-inset-top));
+      padding-bottom: max(85px, env(safe-area-inset-bottom));
+    }
+  
+    .modal-content {
+      padding: 4px 2px 16px 2px;
+      padding-left: max(8px, env(safe-area-inset-left));
+      padding-right: max(8px, env(safe-area-inset-right));
+      padding-bottom: max(16px, calc(16px + env(safe-area-inset-bottom)));
+    }
+  
+    .modal-title-header {
+      gap: 8px;
+    }
+  
+    .modal-title-header .modal-title {
+      padding-right: 5px;
+    }
+  
+    .modal-close-btn {
+      max-width: 260px;
+      padding: 10px 18px;
+      font-size: 14px;
+      margin-top: 16px;
+      margin-bottom: max(8px, env(safe-area-inset-bottom));
+    }
+  
+    .modal h2 {
+      font-size: 18px;
+    }
+  
+    .modal-subtitle {
+      font-size: 11px;
+      font-weight: 600;
+      color: #3366ff;
+      letter-spacing: 0.4px;
+      margin: -6px 0 8px 0;
+    }
+  
+    .modal-lang-toggle {
+      padding: 4px 8px;
+      font-size: 12px;
+      min-width: 75px;
+      gap: 5px;
+    }
+  
+    .modal-lang-toggle .lang-arrow {
+      font-size: 13px;
+    }
+  
+    .modal p {
+      font-size: 14px;
+    }
+  
+    .modal-close {
+      width: 40px;
+      height: 40px;
+      min-width: 40px;
+      min-height: 40px;
+      top: max(10px, env(safe-area-inset-top));
+      right: max(10px, env(safe-area-inset-right));
+    }
+  
+    .modal-close::before,
+    .modal-close::after {
+      height: 16px;
+      width: 2px;
+    }
+  }
+  
+  /* ============================================
+     RESPONSIVE: TABLET & DESKTOP STYLES
+     ============================================ */
+  
+  @media (min-width: 768px) {
+    .modal {
+      top: 50%;
+      left: 50%;
+      right: auto;
+      bottom: auto;
+      width: 90%;
+      min-width: 400px;
+      max-width: 800px;
+      max-height: 80vh;
+      height: 600px;
+      transform: translate(-50%, -50%) scale(0.9);
+      opacity: 0;
+      padding: 30px;
+      padding-top: 30px;
+      /* padding-bottom: 100px; */
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+      transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+    }
+  
+    .modal.modal-open {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+  
+    .modal.modal-closing {
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(0.9);
+      transition: opacity 0.3s cubic-bezier(0.4, 0, 1, 1),
+        transform 0.3s cubic-bezier(0.4, 0, 1, 1);
+    }
+  
+    .modal h2 {
+      font-size: 2rem;
+    }
+  
+    .modal-subtitle {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #3366ff;
+      letter-spacing: 0.5px;
+      margin: -10px 0 14px 0;
+    }
+  
+    .modal p {
+      font-size: 1.5rem;
+    }
+  
+    .modal-close-btn {
+      max-width: 320px;
+      padding: 16px 28px;
+      font-size: 17px;
+      margin-top: 28px;
+      margin-bottom: max(12px, env(safe-area-inset-bottom));
+    }
+  
+    .modal-title-header {
+      margin-bottom: 16px;
+    }
+  
+    .modal-title-header .modal-title {
+      padding-right: 10px;
+    }
+  }
+  

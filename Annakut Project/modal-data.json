@@ -1,0 +1,133 @@
+{
+  "hotspot-1": {
+    "title": "Divine Manifestation",
+    "subtitle": "A sacred moment in history",
+    "image": "images/1-Diamond-Guruhari-Diksha.png",
+    "imageAlt": {
+      "en": "Divine Manifestation",
+      "gu": "દિવ્ય અવતાર"
+    },
+    "content": {
+      "en": "This represents the divine manifestation, a significant moment in the spiritual journey. The divine presence is felt through this sacred representation.",
+      "gu": "આ દિવ્ય અવતારનું પ્રતીક છે, આધ્યાત્મિક યાત્રામાં એક મહત્વપૂર્ણ ક્ષણ. આ પવિત્ર પ્રતિનિધિત્વ દ્વારા દિવ્ય હાજરી અનુભવાય છે."
+    }
+  },
+  "hotspot-2": {
+    "title": "First Darshan",
+    "subtitle": "The beginning of devotion",
+    "image": "images/1-stairs-Prabhudasbhai.png",
+    "imageAlt": {
+      "en": "First Darshan",
+      "gu": "પ્રથમ દર્શન"
+    },
+    "content": {
+      "en": "The first darshan marks the beginning of a spiritual connection. This momentous occasion represents the first glimpse of divine grace.",
+      "gu": "પ્રથમ દર્શન આધ્યાત્મિક જોડાણની શરૂઆત દર્શાવે છે. આ મહત્વપૂર્ણ પ્રસંગ દિવ્ય કૃપાની પ્રથમ ઝાંખી રજૂ કરે છે."
+    }
+  },
+  "hotspot-3": {
+    "title": "Initiation into Sainthood",
+    "subtitle": "A transformative journey",
+    "image": "images/2-Stairs-prataham-milap.png",
+    "imageAlt": {
+      "en": "Initiation into Sainthood",
+      "gu": "સંતત્વમાં દીક્ષા"
+    },
+    "content": {
+      "en": "The initiation into sainthood represents a profound transformation. This sacred ceremony marks the beginning of a dedicated spiritual path.",
+      "gu": "સંતત્વમાં દીક્ષા એક ઊંડા પરિવર્તનનું પ્રતીક છે. આ પવિત્ર સમારંભ એક સમર્પિત આધ્યાત્મિક માર્ગની શરૂઆત દર્શાવે છે."
+    }
+  },
+  "hotspot-4": {
+    "title": "Gift 1: Swadharma",
+    "subtitle": "The first divine gift",
+    "image": "images/gift1-Swadharma.jpg",
+    "imageAlt": {
+      "en": "Gift 1 - Swadharma",
+      "gu": "ભેટ 1 - સ્વધર્મ"
+    },
+    "content": {
+      "en": "Swadharma represents the first divine gift, guiding us towards our true purpose and duty in life. It is the foundation of spiritual growth.",
+      "gu": "સ્વધર્મ પ્રથમ દિવ્ય ભેટનું પ્રતીક છે, જે આપણને જીવનમાં આપણા સાચા હેતુ અને ફરજ તરફ માર્ગદર્શન આપે છે. તે આધ્યાત્મિક વિકાસનો પાયો છે."
+    }
+  },
+  "hotspot-5": {
+    "title": "Gift 2: Nishtha",
+    "subtitle": "The second divine gift",
+    "image": "images/gift2-Nishtha.jpg",
+    "imageAlt": {
+      "en": "Gift 2 - Nishtha",
+      "gu": "ભેટ 2 - નિષ્ઠા"
+    },
+    "content": {
+      "en": "Nishtha, the second divine gift, embodies unwavering devotion and commitment. It strengthens our resolve and deepens our spiritual connection.",
+      "gu": "નિષ્ઠા, બીજી દિવ્ય ભેટ, અચળ ભક્તિ અને પ્રતિબદ્ધતાનું પ્રતીક છે. તે આપણા નિર્ણયને મજબૂત કરે છે અને આપણા આધ્યાત્મિક જોડાણને ઊંડું કરે છે."
+    }
+  },
+  "hotspot-6": {
+    "title": "Gift 3: Atmiyata",
+    "subtitle": "The third divine gift",
+    "image": "images/gift3-Atmiyata.jpg",
+    "imageAlt": {
+      "en": "Gift 3 - Atmiyata",
+      "gu": "ભેટ 3 - આત્મીયતા"
+    },
+    "content": {
+      "en": "Atmiyata, the third divine gift, represents spiritual kinship and unity. It fosters a sense of belonging and connection with the divine community.",
+      "gu": "આત્મીયતા, ત્રીજી દિવ્ય ભેટ, આધ્યાત્મિક સગપણ અને એકતાનું પ્રતીક છે. તે દિવ્ય સમુદાય સાથે સંબંધ અને જોડાણની ભાવના પેદા કરે છે."
+    }
+  },
+  "hotspot-7": {
+    "title": "Gift 4: Breathing Temples",
+    "subtitle": "The fourth divine gift",
+    "image": "images/gift4-BreathingTemples.jpg",
+    "imageAlt": {
+      "en": "Gift 4 - Breathing Temples",
+      "gu": "ભેટ 4 - શ્વાસ લેતાં મંદિરો"
+    },
+    "content": {
+      "en": "Breathing Temples, the fourth divine gift, represents living, breathing places of worship. These sacred spaces are alive with divine energy and spiritual presence.",
+      "gu": "શ્વાસ લેતાં મંદિરો, ચોથી દિવ્ય ભેટ, જીવંત, શ્વાસ લેતા પૂજાના સ્થાનોનું પ્રતીક છે. આ પવિત્ર સ્થાનો દિવ્ય ઊર્જા અને આધ્યાત્મિક હાજરીથી જીવંત છે."
+    }
+  },
+  "hotspot-8": {
+    "title": "Swamiji's Crowned Jewel",
+    "subtitle": "A precious spiritual treasure",
+    "image": "images/2-Diamond-Anirdesh.png",
+    "imageAlt": {
+      "en": "Swamiji's Crowned Jewel",
+      "gu": "સ્વામીજીનો મુગટ મણિ"
+    },
+    "content": {
+      "en": "Swamiji's Crowned Jewel represents the most precious spiritual treasure. This symbolizes the highest achievement in the spiritual journey, adorned with divine grace.",
+      "gu": "સ્વામીજીનો મુગટ મણિ સૌથી કીમતી આધ્યાત્મિક ખજાનાનું પ્રતીક છે. આ આધ્યાત્મિક યાત્રામાં સૌથી ઉચ્ચ સિદ્ધિનું પ્રતીક છે, જે દિવ્ય કૃપાથી સુશોભિત છે."
+    }
+  },
+  "hotspot-9": {
+    "title": "50+ Years",
+    "subtitle": "Five decades of devotion",
+    "image": "images/3-Stairs-Swamishree-Diksha.png",
+    "imageAlt": {
+      "en": "50+ Years of Spiritual Journey",
+      "gu": "50+ વર્ષની આધ્યાત્મિક યાત્રા"
+    },
+    "content": {
+      "en": "Fifty plus years of dedicated spiritual service and devotion. This milestone represents decades of unwavering commitment to the spiritual path and divine service.",
+      "gu": "પચાસ વર્ષથી વધુ સમર્પિત આધ્યાત્મિક સેવા અને ભક્તિ. આ માઇલસ્ટોન આધ્યાત્મિક માર્ગ અને દિવ્ય સેવા માટે દાયકાઓ સુધીની અચળ પ્રતિબદ્ધતાનું પ્રતીક છે."
+    }
+  },
+  "hotspot-10": {
+    "title": "Hariprabodham Dham",
+    "subtitle": "The abode of divine awakening",
+    "image": "images/3-Diamond-Hariprabodham dham.png",
+    "imageAlt": {
+      "en": "Hariprabodham Dham",
+      "gu": "હરિપ્રબોધમ ધામ"
+    },
+    "content": {
+      "en": "Hariprabodham Dham represents the sacred abode of divine awakening. This spiritual center is a place where devotees experience profound spiritual enlightenment and connection with the divine.",
+      "gu": "હરિપ્રબોધમ ધામ દિવ્ય જાગૃતિના પવિત્ર નિવાસનું પ્રતીક છે. આ આધ્યાત્મિક કેન્દ્ર એક સ્થળ છે જ્યાં ભક્તો ઊંડી આધ્યાત્મિક જ્ઞાનોદય અને દિવ્ય સાથે જોડાણનો અનુભવ કરે છે."
+    }
+  }
+}
+
