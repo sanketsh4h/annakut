@@ -1,0 +1,27 @@
+{
+  "scene": "scene-test/lod-meta.json",
+  "background": [
+    0.06,
+    0.05,
+    0.05
+  ],
+  "initialCamera": {
+    "position": [
+      -0.508,
+      -0.1,
+      -0.761
+    ],
+    "target": [
+      -0.219,
+      0.15,
+      0.043
+    ],
+    "fov": 60
+  },
+  "fitPortrait": false,
+  "credit": {
+    "text": "Pipeline test · South Building sample photos from the COLMAP project",
+    "url": "https://colmap.github.io/datasets.html"
+  },
+  "hotspots": []
+}
