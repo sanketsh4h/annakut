@@ -3,11 +3,17 @@
 A phone-friendly web page that shows a Gaussian splat scan with tappable,
 bilingual (English / Gujarati) hotspots.
 
-- **Default scene:** the 2025 Annakut, version 1 (`site/last-year-v1.json`,
-  `site/scene-last-year-v1/`, 34 MB). The same 15 photos as v0, trained with
+- **Default scene:** the 2025 Annakut, version 2 (`site/last-year-v2.json`,
+  `site/scene-last-year-v2/`, 34 MB). Version 1 cropped to a 3D boundary round
+  the display (below), so the hall's walls, ceiling and floor and the haze
+  round the display are gone: 848,702 splats are left. Same turn and pan
+  limits as v1; the zoom is set from the screen (the display fills 75% of it
+  farthest out, and can be brought 4 times closer).
+- **Version 1** (`?config=last-year-v1`, `site/scene-last-year-v1/`, 34 MB):
+  the same 15 photos as v0, trained with
   depth from dense stereo and a monocular depth model, levelled with the
   phones' gravity sensors, and cleaned of faint and very large splats
-  (865,000 splats are left). The camera is held to
+  (865,000 splats are left), with the hall still round it. The camera is held to
   ±75 degrees to either side and 0 to 75 degrees above level
   (`viewLimits`, below). From the front it looks like the photos; towards the
   edges of that window it smears, because no photo saw the display from there.
@@ -65,8 +71,9 @@ site/                 everything that gets deployed (plain static files)
   app.js              viewer setup, hotspots, info sheet, language toggle;
                       DEFAULT_CONFIG names the scene the page opens with
   styles.css
-  last-year-v1.json   the default scene: the 2025 Annakut, version 1
-  scene-last-year-v1/ its streamed scene: lod-meta.json plus chunk folders
+  last-year-v2.json   the default scene: the 2025 Annakut, version 2
+  scene-last-year-v2/ its streamed scene: lod-meta.json plus chunk folders
+  last-year-v1.json   version 1, with scene-last-year-v1/
   last-year-v0.json   version 0, with scene-last-year-v0/
   hotspots.json       the sample scene: scene file, starting view, hotspot
                       positions and text
@@ -94,7 +101,7 @@ Each model gets its own versioned pair, and old versions stay in place:
    folder as the second argument:
 
    ```bash
-   ROTATE=... sh scripts/build-scene.sh path/to/model.ply site/scene-last-year-v2
+   ROTATE=... sh scripts/build-scene.sh path/to/model.ply site/scene-last-year-v3
    ```
 
    A model that needs moving as well as turning (v1 does: the ground goes to
@@ -104,19 +111,50 @@ Each model gets its own versioned pair, and old versions stay in place:
 
    ```bash
    node_modules/.bin/splat-transform -w model.ply -r 47.1311,-43.2295,-149.6335 -t -0.75,1.6,0 level.ply
-   sh scripts/build-scene.sh level.ply site/scene-last-year-v2
+   sh scripts/build-scene.sh level.ply site/scene-last-year-v3
    ```
 
-2. Copy the current `site/last-year-v1.json` to `site/last-year-v2.json` and
+   v2 was then cropped to the display (next section) before the build step.
+
+2. Copy the current `site/last-year-v2.json` to `site/last-year-v3.json` and
    point its `scene` at the new folder. Check the starting view at
-   `?config=last-year-v2` and adjust `initialCamera` and `viewLimits` if the
+   `?config=last-year-v3` and adjust `initialCamera` and `viewLimits` if the
    model sits differently.
-3. Change `DEFAULT_CONFIG` in `site/app.js` to `'last-year-v2'`. That one line
+3. Change `DEFAULT_CONFIG` in `site/app.js` to `'last-year-v3'`. That one line
    is what makes it the page visitors get.
 
 Never commit a source `.ply` (`.gitignore` blocks them): they are over
 GitHub's 100 MB file limit. The photos stay out of the repo too, because they
 carry GPS positions.
+
+### Cropping to the display
+
+v2 keeps only what lies inside a 3D boundary round the display, drawn to
+follow a sketch of what belongs to the display and what is noise. The
+boundary follows the display's stepped shape: low and deep at the front
+trays, tall and shallow at the canopy, with the domes on top. It is made from
+the display's own clearly reconstructed surfaces (opaque, small splats), cut
+into height bands 0.25 units tall; each band's outline seen from above,
+grown by 0.25 units, is what that band keeps. The script is
+`last-year-3d/splat-v1/tools/crop_hull.py`, kept with the other training
+tools outside the repository (not committed), and runs on the levelled `.ply` before
+`build-scene.sh`:
+
+```bash
+python3 crop_hull.py level.ply cropped.ply \
+  --box=-4.5,-0.4,-3.95,4.7,5.7,3.95 --box=-2.9,5.7,-3.2,2.9,7.1,-1.3 \
+  --fringe-box=-4.75,0.5,-3.75,4.5,5.75,4.0 --keep-box=-0.8,5.5,-2.2,0.8,7.05,-1.35
+```
+
+The two `--box` limits are loose, in the viewer's frame: the display, and the
+domes above it. They keep the hall walls, ceiling and the cabinet beside the
+display out of the boundary.
+
+The `--fringe-box` is a tighter box round the display. Outside it (above the
+canopy, under the front table top, at the sides) only small splats right next
+to the display's solid surfaces stay: the table's front edge and the domes
+stay, the streaks and haze between them go. The centre dome is drawn with the
+same thin, faint splats as the streaks round it, so `--keep-box` exempts it.
 
 ## Making a scene from a new scan
 
@@ -172,6 +210,33 @@ Setting `focusBox.min[1]` to 0 would let the camera down to the floor.
 | `ground` | Height (Y) of the floor in the scene. |
 | `focusBox` | Box the orbited point stays in while panning (and after a tap re-centres the view). |
 | `distance` | Closest and farthest zoom, measured from the orbited point. The farthest is raised automatically if the starting view (after the screen-shape step-back) is farther. |
+| `zoom` | Sets the zoom from the screen instead of `distance` (v2 uses it, below). |
+
+v2 sets its zoom from the screen. Farthest out, the display spans 75% of the
+screen in its tighter direction (the height on a landscape screen, the width
+on a phone held upright); closest in, it is 4 times larger:
+
+```json
+"zoom": {
+  "boxes": [
+    { "min": [-4.0, 0.2, 2.5], "max": [4.0, 1.0, 3.9] },
+    { "min": [-4.5, 0.2, -1.0], "max": [4.5, 1.0, 2.5] },
+    { "min": [-4.5, 0.2, -3.5], "max": [4.5, 5.6, -1.0] },
+    { "min": [-0.6, 5.6, -2.0], "max": [0.6, 6.9, -1.4] }
+  ],
+  "fill": 0.75,
+  "in": 4
+}
+```
+
+The boxes describe the display's shape (front table, middle tiers, the back
+tiers with the canopy, the centre dome), fitted to what shows on screen. The
+page works out the distance at which they span `fill` of the screen, seen from
+the starting view's direction, and that is both the farthest zoom and where
+the starting view sits. The closest zoom is that distance divided by `in`, so
+the point the camera orbits looks `in` times larger; things behind that point
+grow a little less. Turning the phone recomputes both, and Reset view goes
+back to the farthest zoom for the new screen shape.
 
 The camera cannot get below the ground: it never goes below the point it
 orbits (so the lowest `pitch` is raised to 0 when `ground` is set), and that
@@ -246,6 +311,15 @@ Checked in a desktop browser, including at phone size (375 x 812):
 - The language toggle switches titles, body text and interface labels.
 - Portrait and landscape layouts.
 
+Checked for v2 (2026-11-20): it opens by default at 375 x 812 (WebGPU),
+812 x 375 (WebGL 2) and 1000 x 692 (WebGPU), and looks clean from the front,
+from both sides and from above. The yaw, pitch and pan limits are the same as
+v1's. For the zoom rule, measured on screenshots: at 1000 x 692 the start view
+shows the display over 74% of the height (64% of the width); at 375 x 812 over
+73% of the width. The mouse wheel stops there going out and at 4 times closer
+going in. Turning 375 x 812 to 812 x 375 without reloading, then Reset view,
+gives the same framing as loading sideways.
+
 Checked for v1 and the view limits (2026-11-19, the same desktop browser):
 
 - The default page opens v1. Its starting view shows the whole display, level,
@@ -282,10 +356,11 @@ Known gaps:
   phone-sized session that zoomed in downloaded all of v0. The sample is 52 MB on disk, and a
   phone-sized session downloaded about 36 MB of it. The first view needs only
   the lowest level (about 4 MB for the Annakut, 3.2 MB for the sample).
-- v1 is clean round the display but still smears towards the edges of its
-  view window: past about 45 degrees to the side or above, the food on the
-  tiers turns into streaks. No photo was taken from there. Some loose splats
-  from the hall ceiling remain above the canopy.
+- v1 and v2 still smear towards the edges of the view window: past about 45
+  degrees to the side or above, the food on the tiers turns into streaks. No
+  photo was taken from there. v2's crop removes what lies outside the
+  display; streaks inside the boundary (round the domes and the front-right
+  trays) remain.
 - The person who stood at the left edge of three photos is still in v1, as a
   dark, streaky figure beside the display when seen from the left. The boxes
   that were meant to leave them out of training were drawn too small (they
@@ -295,7 +370,8 @@ Known gaps:
   stood at the left edge of three photos appears as a faint figure there.
 - Hotspot markers stay visible when the point is behind another object.
 - The starting view is fitted to the screen shape once, at load. Rotating the
-  phone afterwards keeps the current camera.
+  phone afterwards keeps the current camera (in v2 the zoom limits follow the
+  new shape, and Reset view refits).
 - The camera can zoom through surfaces inside the `distance` limit; the
   viewer has no collision. Scenes without `viewLimits` can still orbit
   anywhere, including behind the scene.

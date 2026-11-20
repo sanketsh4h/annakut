@@ -23,7 +23,7 @@ import { Mat4, OrbitController, Picker, Vec2, Vec3 } from 'playcanvas';
 // The scene the page opens with: site/<name>.json. Scene descriptions and
 // their folders are versioned (last-year-v0, last-year-v1, ...), so putting a
 // better model live is a change to this one line.
-const DEFAULT_CONFIG = 'last-year-v1';
+const DEFAULT_CONFIG = 'last-year-v2';
 
 const params = new URLSearchParams(location.search);
 const $ = (id) => document.getElementById(id);
@@ -112,6 +112,13 @@ function fitToScreen(pose, square) {
 //     "focusBox": { "min": [x, y, z], "max": [x, y, z] },
 //                              where the orbited point may go when panning
 //     "distance": [1.5, 16]    closest and farthest zoom, from that point
+//     "zoom": {                or set the zoom from the screen instead:
+//       "boxes": [{ "min": [x, y, z], "max": [x, y, z] }, ...],
+//                              the display's shape, as a few boxes
+//       "fill": 0.75,          farthest out, the boxes span this much of the
+//                              screen (across or up, whichever is tighter)
+//       "in": 4                closest in shows the display this many times
+//     }                        larger; the start view sits at the farthest
 //   }
 //
 // The viewer's orbit camera is PlayCanvas's OrbitController, which the viewer
@@ -125,12 +132,72 @@ function fitToScreen(pose, square) {
 // The ground rule follows from the other two: the camera never goes below the
 // point it orbits (lowest pitch 0), and that point never goes below "ground".
 // With a "ground", a lower pitch below 0 is therefore raised to 0.
+//
+// The controller does not clamp the distance of a pose it is attached to, so
+// the hook below brings it into the zoom range itself (and, on "Reset view",
+// to the farthest zoom, which may have changed if the screen was turned).
 let activeLimits = null;
+let orbitController = null;
+let resetting = false;
 const attachOrbit = OrbitController.prototype.attach;
 OrbitController.prototype.attach = function (pose, smooth) {
-    if (activeLimits) applyViewLimits(this, activeLimits);
+    orbitController = this;
+    if (activeLimits) {
+        applyViewLimits(this, activeLimits);
+        const range = activeLimits.distance;
+        if (range) pose = poseAtDistance(pose, resetting ? range[1] : Math.min(Math.max(pose.distance, range[0]), range[1]));
+    }
+    resetting = false;
     return attachOrbit.call(this, pose, smooth);
 };
+
+// The same view direction and focus point, from another distance.
+function poseAtDistance(pose, distance) {
+    if (Math.abs(distance - pose.distance) < 1e-6) return pose;
+    const focus = pose.getFocus(new Vec3());
+    const from = new Vec3().sub2(pose.position, focus).normalize().mulScalar(distance).add(focus);
+    return pose.clone().look(from, focus);
+}
+
+// How far from `target`, looking from `position`'s direction, the camera has to
+// be for `box` to span `fill` of the screen in its tighter direction. The viewer
+// applies the field of view to the screen's longer side.
+function fillDistance({ position, target, fov }, boxes, fill) {
+    const W = window.innerWidth, H = window.innerHeight;
+    const focal = Math.max(W, H) / 2 / Math.tan((fov * Math.PI) / 360);
+    const fwd = new Vec3(target[0] - position[0], target[1] - position[1], target[2] - position[2]).normalize();
+    const right = new Vec3().cross(fwd, Vec3.UP).normalize();
+    const up = new Vec3().cross(right, fwd);
+    const corners = [];
+    for (const box of boxes)
+        for (const x of [box.min[0], box.max[0]])
+            for (const y of [box.min[1], box.max[1]])
+                for (const z of [box.min[2], box.max[2]]) corners.push(new Vec3(x, y, z));
+    const cover = (d) => {
+        const cam = new Vec3(...target).sub(fwd.clone().mulScalar(d));
+        let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+        for (const c of corners) {
+            const rel = c.clone().sub(cam);
+            const z = rel.dot(fwd);
+            if (z < 0.05) return Infinity;
+            const px = rel.dot(right) / z, py = rel.dot(up) / z;
+            x0 = Math.min(x0, px); x1 = Math.max(x1, px); y0 = Math.min(y0, py); y1 = Math.max(y1, py);
+        }
+        return Math.max(((x1 - x0) * focal) / W, ((y1 - y0) * focal) / H);
+    };
+    let near = 0.1, far = 1000;
+    for (let i = 0; i < 50; i++) {
+        const mid = (near + far) / 2;
+        if (cover(mid) > fill) near = mid; else far = mid;
+    }
+    return far;
+}
+
+// Turns a "zoom" rule into a distance range for the current screen.
+function zoomDistances(start, zoom) {
+    const far = fillDistance(start, zoom.boxes, zoom.fill ?? 0.75);
+    return [far / (zoom.in ?? 4), far];
+}
 
 function applyViewLimits(controller, limits) {
     const { yaw, pitch, ground, focusBox, distance } = limits;
@@ -178,11 +245,28 @@ async function main() {
     }
     // A raw scan is only clean near where the photos were taken, so a scene
     // can opt out of the step-back with "fitPortrait": false.
-    if (config.fitPortrait !== false) {
+    const zoom = !params.has('nolimits') && config.viewLimits?.zoom;
+    if (zoom && settings.cameras[0]) {
+        // The start view is the farthest zoom: the display spans "fill" of the screen.
+        const start = settings.cameras[0].initial;
+        const far = fillDistance(start, zoom.boxes, zoom.fill ?? 0.75);
+        const away = Math.hypot(...start.position.map((p, i) => p - start.target[i]));
+        const position = start.position.map((p, i) => round3(start.target[i] + ((p - start.target[i]) * far) / away));
+        settings.cameras[0] = { initial: { ...start, position } };
+    } else if (config.fitPortrait !== false) {
         settings.cameras = settings.cameras.map((c) => ({ initial: fitToScreen(c.initial, config.fitSquare === true) }));
     }
     if (config.viewLimits && !params.has('nolimits')) {
         activeLimits = { ...config.viewLimits };
+        if (zoom) {
+            const start = settings.cameras[0]?.initial || config.initialCamera;
+            activeLimits.distance = zoomDistances(start, zoom);
+            // A turned or resized screen changes how far out the display fills it.
+            window.addEventListener('resize', () => {
+                activeLimits.distance = zoomDistances(start, zoom);
+                if (orbitController) orbitController.zoomRange = new Vec2(...activeLimits.distance);
+            });
+        }
         // Never let the zoom limit undo the step-back to the starting view.
         const start = settings.cameras[0]?.initial;
         if (start && activeLimits.distance) {
@@ -341,7 +425,9 @@ async function main() {
 
     $('reset').addEventListener('click', () => {
         closeSheet();
-        if (viewer.state.loaded) viewer.resetCamera();
+        if (!viewer.state.loaded) return;
+        resetting = true;
+        viewer.resetCamera();
     });
 
     // ----- hint ------------------------------------------------------------
