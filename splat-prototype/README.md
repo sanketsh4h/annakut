@@ -92,6 +92,15 @@ scan-pipeline/        reference copy of the gpu machine's scan scripts
 `site/` has no build step. Any static host (Vercel, Netlify, GitHub Pages) can
 serve the folder as it is.
 
+## Where it is live
+
+<https://sanketsh4h.github.io/annakut/>, on GitHub Pages.
+
+`.github/workflows/pages.yml` uploads `site/` on every push to `3D-gsplat`
+that changes the site, so pushing this branch is what publishes a change. It
+takes a few minutes. Only tracked files go up, so `?config=test-scan` does not
+work there: its scene folder is not in the repo.
+
 ## Putting a new model live
 
 Each model gets its own versioned pair, and old versions stay in place:

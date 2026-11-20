@@ -1,0 +1,43 @@
+# Publishes splat-prototype/site/ to GitHub Pages:
+#   https://sanketsh4h.github.io/annakut/
+#
+# It runs on every push to 3D-gsplat that changes the site or this file, so a
+# push to this branch is what puts a change live. The site has no build step:
+# the folder is uploaded as it is.
+name: Publish the splat site to GitHub Pages
+
+on:
+  push:
+    branches: [3D-gsplat]
+    paths:
+      - "splat-prototype/site/**"
+      - ".github/workflows/pages.yml"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time. A newer push waits for the one in progress.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Check out the branch
+        uses: actions/checkout@v7
+      - name: Set up Pages
+        uses: actions/configure-pages@v6
+      - name: Upload the site folder
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: splat-prototype/site
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v5
