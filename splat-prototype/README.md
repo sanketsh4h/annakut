@@ -1,12 +1,16 @@
 # Annakut 3D darshan: splat prototype
 
 A phone-friendly web page that shows a Gaussian splat scan with tappable,
-bilingual (English / Gujarati) hotspots. It is a proof that the website side of
-the plan works; the scene in it is a stand-in, not the Annakut.
+bilingual (English / Gujarati) hotspots.
 
-- **Scene:** "Knock Community Hall" by scbenoit, CC BY 4.0
-  (<https://superspl.at/scene/0ff2e6dc>), taken from the PlayCanvas engine
-  examples. 1.9 million splats.
+- **Default scene:** the 2025 Annakut, version 0 (`site/last-year-v0.json`,
+  `site/scene-last-year-v0/`, 36 MB). It is the raw baseline: 1,000,000 splats
+  trained on 15 photos, not cleaned or cropped. From the front it looks like
+  the photos; past about 30 degrees to the side it breaks up, and loose splats
+  surround the display. It has no hotspots yet.
+- **Sample scene:** `?config=hotspots` shows "Knock Community Hall" by
+  scbenoit, CC BY 4.0 (<https://superspl.at/scene/0ff2e6dc>), taken from the
+  PlayCanvas engine examples. 1.9 million splats. It carries the 10 hotspots.
 - **Hotspot text and photos:** copied from `../Annakut Project/modal-data.json`.
   Their positions are placeholders pinned to features of the sample building.
 - **Viewer:** PlayCanvas [SuperSplat Viewer](https://github.com/playcanvas/supersplat-viewer)
@@ -43,18 +47,22 @@ Add these to the address, for example `http://localhost:4173/?webgl&stats`.
 | `?lang=gu` | Start in Gujarati |
 | `?place` | Hotspot placement mode (below) |
 | `?cam=px,py,pz,tx,ty,tz,fov` | Try a starting camera position and target |
-| `?config=test-scan` | Load `site/test-scan.json` instead of `hotspots.json` (another scene) |
+| `?config=hotspots` | Load `site/hotspots.json` (the sample scene) instead of the default scene. Any `site/<name>.json` works: `?config=test-scan`, `?config=last-year-v0` |
 
 ## Layout
 
 ```
 site/                 everything that gets deployed (plain static files)
   index.html          page shell and import map
-  app.js              viewer setup, hotspots, info sheet, language toggle
+  app.js              viewer setup, hotspots, info sheet, language toggle;
+                      DEFAULT_CONFIG names the scene the page opens with
   styles.css
-  hotspots.json       scene file, starting view, hotspot positions and text
+  last-year-v0.json   the default scene: the 2025 Annakut, version 0
+  scene-last-year-v0/ its streamed scene: lod-meta.json plus chunk folders
+  hotspots.json       the sample scene: scene file, starting view, hotspot
+                      positions and text
   images/             hotspot photos (1024 px JPEGs)
-  scene/              the streamed scene: lod-meta.json plus chunk folders
+  scene/              the sample's streamed scene
   test-scan.json      scene description for the pipeline test scan
   scene-test/         the pipeline test scan
   vendor/             viewer and engine files copied from node_modules
@@ -68,7 +76,30 @@ scan-pipeline/        reference copy of the gpu machine's scan scripts
 `site/` has no build step. Any static host (Vercel, Netlify, GitHub Pages) can
 serve the folder as it is.
 
-## Swapping in the real scan
+## Putting a new model live
+
+Each model gets its own versioned pair, and old versions stay in place:
+`site/last-year-v1.json` with `site/scene-last-year-v1/`, and so on.
+
+1. Convert the splat into a new folder (step 3 below), giving the output
+   folder as the second argument:
+
+   ```bash
+   ROTATE=... sh scripts/build-scene.sh path/to/model.ply site/scene-last-year-v1
+   ```
+
+2. Copy `site/last-year-v0.json` to `site/last-year-v1.json` and point its
+   `scene` at the new folder. Check the starting view at
+   `?config=last-year-v1` and adjust `initialCamera` if the model sits
+   differently.
+3. Change `DEFAULT_CONFIG` in `site/app.js` to `'last-year-v1'`. That one line
+   is what makes it the page visitors get.
+
+Never commit a source `.ply` (`.gitignore` blocks them): they are over
+GitHub's 100 MB file limit. The photos stay out of the repo too, because they
+carry GPS positions.
+
+## Making a scene from a new scan
 
 Shoot the photos by `CAPTURE-CHECKLIST.md` first.
 
@@ -88,15 +119,20 @@ Shoot the photos by `CAPTURE-CHECKLIST.md` first.
    in the editor.
 
 4. Re-place the hotspots (next section) and update `initialCamera` and
-   `credit` in `site/hotspots.json`.
+   `credit` in the scene description. A `credit` without a `url` shows as
+   plain text.
 
 ## Placing hotspots
 
 Open the page with `?place`. Move the camera to the view a visitor should get
 for a hotspot, then tap the exact spot in the scene. Each tap adds a line with
 the 3D `position` and the `camera` viewpoint; paste those two fields into the
-matching entry in `site/hotspots.json`. "Record current view" gives an
-`initialCamera` for the starting view.
+matching entry of the scene description's `hotspots` list. "Record current
+view" gives an `initialCamera` for the starting view.
+
+The Annakut scene has an empty `hotspots` list. The 10 entries in
+`site/hotspots.json` are placed on the sample building, so their text and
+photos can be copied over, but each needs a new `position` and `camera`.
 
 Note that a tap on the scene also re-centres the camera on that point. That is
 the viewer's normal behaviour, and it applies to visitors too.
@@ -127,13 +163,21 @@ A scene description can set `"fitPortrait": false` to stop the page stepping
 the camera back on upright phones. `test-scan.json` does, because a raw scan
 only looks right from near where the photos were taken.
 
+`"fitSquare": true` does the opposite: the starting view is taken to be framed
+for a square screen, and the camera steps back on wide screens as well as
+upright ones, so a subject about as tall as it is wide stays whole on every
+screen shape. `last-year-v0.json` uses it to keep the whole display in view.
+
 ## What was checked, and what was not
 
 Checked in a desktop browser, including at phone size (375 x 812):
 
-- The scene streams and renders with both WebGPU and WebGL 2.
-- All 10 hotspots track their points; tapping one flies the camera there and
-  opens the sheet; previous / next, close and reset view work.
+- Both scenes stream and render with both WebGPU and WebGL 2.
+- The Annakut's starting view shows the whole display upright (375 x 812),
+  sideways (812 x 375) and on a desktop window (1280 x 800).
+- On the sample scene, all 10 hotspots track their points; tapping one flies
+  the camera there and opens the sheet; previous / next, close and reset view
+  work.
 - The language toggle switches titles, body text and interface labels.
 - Portrait and landscape layouts.
 
@@ -148,8 +192,13 @@ Not checked:
 
 Known gaps:
 
-- Data use: this sample is 52 MB on disk, and a phone-sized session downloaded
-  about 36 MB of it. The first view needs only the 3.2 MB lowest level.
+- Data use: the Annakut scene is 36 MB on disk and a phone-sized session
+  that zoomed in downloaded all of it. The sample is 52 MB on disk, and a
+  phone-sized session downloaded about 36 MB of it. The first view needs only
+  the lowest level (about 4 MB for the Annakut, 3.2 MB for the sample).
+- The Annakut scene is not cropped: loose splats from the hall's ceiling,
+  floor and walls show around the display in the starting view, and a person
+  who stood at the left edge of three photos appears as a faint figure there.
 - Hotspot markers stay visible when the point is behind another object.
 - The starting view is fitted to the screen shape once, at load. Rotating the
   phone afterwards keeps the current camera.

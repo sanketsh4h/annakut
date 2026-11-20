@@ -12,11 +12,17 @@
 //   ?lang=gu    start in Gujarati
 //   ?place      hotspot placement mode: tap the scene to get coordinates
 //   ?cam=px,py,pz,tx,ty,tz[,fov]   try a starting camera position and target
-//   ?config=name   load site/name.json instead of hotspots.json (another scene)
+//   ?config=name   load site/name.json instead of the default scene, for
+//                  example ?config=hotspots for the sample scene
 
 import { createViewer } from '@playcanvas/supersplat-viewer/viewer';
 import { defaultSettings } from '@playcanvas/supersplat-viewer/settings';
 import { Mat4, Picker, Vec3 } from 'playcanvas';
+
+// The scene the page opens with: site/<name>.json. Scene descriptions and
+// their folders are versioned (last-year-v0, last-year-v1, ...), so putting a
+// better model live is a change to this one line.
+const DEFAULT_CONFIG = 'last-year-v0';
 
 const params = new URLSearchParams(location.search);
 const $ = (id) => document.getElementById(id);
@@ -27,6 +33,7 @@ const STRINGS = {
         reset: 'Reset view',
         loading: 'Loading 3D scene…',
         hint: 'Drag to look around · pinch to zoom · tap a glowing point',
+        hintPlain: 'Drag to look around · pinch to zoom',
         prev: 'Previous',
         next: 'Next',
         close: 'Close',
@@ -39,6 +46,7 @@ const STRINGS = {
         reset: 'મૂળ દૃશ્ય',
         loading: '3D દૃશ્ય લોડ થઈ રહ્યું છે…',
         hint: 'ફેરવવા માટે ખેંચો · ઝૂમ માટે પિંચ કરો · ઝબકતા બિંદુ પર ટૅપ કરો',
+        hintPlain: 'ફેરવવા માટે ખેંચો · ઝૂમ માટે પિંચ કરો',
         prev: 'પાછળ',
         next: 'આગળ',
         close: 'બંધ કરો',
@@ -78,10 +86,15 @@ const round3 = (n) => Math.round(n * 1000) / 1000;
 // screen. A starting view authored on a wide screen would therefore crop the
 // sides of the scene on a phone held upright, so step the camera back until
 // about the same width is in view (capped, so the scene doesn't get tiny).
-function fitToPortrait(pose) {
+//
+// With `square` (a scene description's "fitSquare": true) the starting view
+// is taken to be framed for a square screen, and the camera steps back on
+// wide screens as well as tall ones, until the shorter side shows what the
+// square did. Use it when the subject is about as tall as it is wide.
+function fitToScreen(pose, square) {
     const aspect = window.innerWidth / window.innerHeight;
-    if (aspect >= 1) return pose;
-    const back = Math.min(1 / aspect, 2);
+    if (aspect >= 1 && !square) return pose;
+    const back = square ? Math.min(Math.max(aspect, 1 / aspect), 2.2) : Math.min(1 / aspect, 2);
     const position = pose.position.map((p, i) => round3(pose.target[i] + (p - pose.target[i]) * back));
     return { ...pose, position };
 }
@@ -97,7 +110,7 @@ function showError(error) {
 async function main() {
     // ?config=name swaps in another scene description from the same folder.
     const wanted = params.get('config') || '';
-    const configName = /^[a-z0-9-]+$/.test(wanted) ? wanted : 'hotspots';
+    const configName = /^[a-z0-9-]+$/.test(wanted) ? wanted : DEFAULT_CONFIG;
     const config = await (await fetch(`${configName}.json`, { cache: 'no-cache' })).json();
     const hotspots = config.hotspots || [];
 
@@ -106,15 +119,15 @@ async function main() {
     const settings = defaultSettings();
     if (config.background) settings.background.color = config.background;
     if (config.initialCamera) settings.cameras = [{ initial: config.initialCamera }];
-    // ?cam=px,py,pz,tx,ty,tz[,fov] tries a starting view without editing hotspots.json.
+    // ?cam=px,py,pz,tx,ty,tz[,fov] tries a starting view without editing the scene description.
     const cam = (params.get('cam') || '').split(',').map(Number);
     if (cam.length >= 6 && cam.every(Number.isFinite)) {
         settings.cameras = [{ initial: { position: cam.slice(0, 3), target: cam.slice(3, 6), fov: cam[6] || 60 } }];
     }
     // A raw scan is only clean near where the photos were taken, so a scene
-    // can opt out of the portrait step-back with "fitPortrait": false.
+    // can opt out of the step-back with "fitPortrait": false.
     if (config.fitPortrait !== false) {
-        settings.cameras = settings.cameras.map((c) => ({ initial: fitToPortrait(c.initial) }));
+        settings.cameras = settings.cameras.map((c) => ({ initial: fitToScreen(c.initial, config.fitSquare === true) }));
     }
     // Each hotspot is also a viewer annotation, so the viewer can fly the
     // camera to its authored viewpoint. We draw the hotspots ourselves.
@@ -291,7 +304,8 @@ async function main() {
         $('prev-label').textContent = t('prev');
         $('next-label').textContent = t('next');
         $('sheet-close').setAttribute('aria-label', t('close'));
-        hint.textContent = t('hint');
+        // A scene without hotspots has no glowing points to mention.
+        hint.textContent = t(hotspots.length ? 'hint' : 'hintPlain');
         markers.forEach((m, i) => {
             m.label.textContent = tr(hotspots[i].title);
             m.el.setAttribute('aria-label', tr(hotspots[i].title));
@@ -332,7 +346,8 @@ async function main() {
 
     if (config.credit) {
         $('credit').textContent = config.credit.text;
-        $('credit').href = config.credit.url;
+        // A credit without a "url" is plain text, not a link.
+        if (config.credit.url) $('credit').href = config.credit.url;
     }
 
     // ----- start -----------------------------------------------------------

@@ -4,3 +4,6 @@ build-tmp/
 .DS_Store
 last_year_annakut/
 site/scene-test/
+# Source splats are over GitHub's 100 MB file limit. Only the converted
+# site/scene-*/ folders go in the repo.
+*.ply
