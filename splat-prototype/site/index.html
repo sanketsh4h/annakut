@@ -48,6 +48,18 @@
 
     <p id="hint" class="hint" hidden></p>
 
+    <!-- Walk along the display: a start button, then the step controls.
+         Shown only for a scene whose description has a "walk". -->
+    <div id="walk" class="walk" hidden>
+      <button id="walk-start" class="walk-btn primary" type="button"></button>
+      <div id="walk-steps" class="walk-steps" hidden>
+        <button id="walk-next" class="walk-btn primary" type="button"></button>
+        <span id="walk-count" class="walk-count"></span>
+        <button id="walk-back" class="walk-btn round" type="button">›</button>
+        <button id="walk-exit" class="walk-btn" type="button"></button>
+      </div>
+    </div>
+
     <div id="loading" class="loading">
       <div class="loading-box">
         <p id="loading-label">Loading 3D scene…</p>

@@ -62,6 +62,7 @@ Add these to the address, for example `http://localhost:4173/?webgl&stats`.
 | `?cam=px,py,pz,tx,ty,tz,fov` | Try a starting camera position and target |
 | `?config=hotspots` | Load `site/hotspots.json` (the sample scene) instead of the default scene. Any `site/<name>.json` works: `?config=test-scan`, `?config=last-year-v0` |
 | `?nolimits` | Ignore the scene's `viewLimits`, for authoring hotspots and views outside the visitor's window |
+| `?walk` | Start in the walk along the display, if the scene has one |
 
 ## Layout
 
@@ -260,6 +261,63 @@ fly-to). A limited scene also turns off the viewer's keyboard and gamepad
 input, whose WASD, arrow, `2` and `3` keys switch to unlimited fly and walk
 modes. Visitors drag, pinch and tap, and the Reset view button stays.
 
+## Walking along the display
+
+A scene description can offer a walk round the front of the display. The
+visitor presses **Walk along the display**, the camera glides to the right
+end, and each press of **Move left** takes it one stop further along a
+curved path to the left end. **›** steps back, **Full view** (or Reset view,
+or Escape) returns to the starting view. Left and right arrow keys step too.
+
+From `last-year-v2.json`:
+
+```json
+"walk": {
+  "eyeHeight": 1.91,
+  "center": [0, -0.7],
+  "radius": 6.4,
+  "angles": [45, -45],
+  "fov": 60,
+  "stops": 5,
+  "step": 0.6
+}
+```
+
+| Field | Meaning |
+| --- | --- |
+| `eyeHeight` | Height (Y) of the camera. The view is level, so whatever is at this height sits halfway up the screen. |
+| `center` | X and Z of the point the path curves round. The camera faces it all the way. |
+| `radius` | How far the camera stays from that point. |
+| `angles` | Where on that circle the walk starts and ends, in degrees: 0 is straight in front of the display, positive is the visitor's right. `[45, -45]` goes right to left. |
+| `fov` | Field of view, across the screen's longer side. |
+| `stops` | At least this many stops, the two ends included. |
+| `step` | No two stops are further apart than this share of the angle in view across the screen, so a narrow screen gets more stops. |
+
+Seen from above, the path is an arc of a circle. With the values above it
+runs from the display's front right corner, out to about 1.4 m in front of
+the front trays at the middle, and back in to the front left corner. Height,
+distance from the centre and field of view stay the same for the whole walk,
+so nothing at the centre changes size on the way. A landscape screen gets 5
+stops and a phone held upright 7.
+
+`eyeHeight` 1.91 is the eye height of the two seated cut-out figures on the
+middle tier, measured in the model by picking points on their faces in
+placement mode (left figure 1.915, right figure 1.90). In the model's scale
+that is about 1.45 m above the estimated floor, close to a standing
+visitor's eye height. "Life size" here means the view of someone standing
+there: at the middle stop the cut-out figures are about 3.8 m away.
+
+During the walk a drag slides the camera along the same path (the buttons
+then carry on from the nearest stop); tilting, panning and zoom are off.
+
+How it works: the walk is an orbit round `center` with the pitch, the
+distance and the orbited point all fixed, so it uses the same
+`OrbitController` limits as `viewLimits`, swapped in while the walk is on and
+put back after. Each glide is the viewer's own hotspot fly-to, aimed at one
+extra annotation whose viewpoint is rewritten for each stop. A glide goes
+straight from one stop to the next while the view turns, so between stops
+the camera cuts inside the arc by up to about 10 cm.
+
 ## Placing hotspots
 
 Open the page with `?place`. Move the camera to the view a visitor should get
@@ -329,6 +387,22 @@ shows the display over 74% of the height (64% of the width); at 375 x 812 over
 going in. Turning 375 x 812 to 812 x 375 without reloading, then Reset view,
 gives the same framing as loading sideways.
 
+Checked for the walk (2026-11-20, the same desktop browser):
+
+- At 1200 x 800 (WebGPU), 812 x 375 (WebGPU) and 375 x 812 (WebGL 2, in
+  Gujarati): the button starts the walk at the right end; each press moves
+  one stop left (5 stops on the two wide screens, 7 on the upright phone);
+  the camera stays at height 1.91 and 6.4 from the centre at every stop; Move
+  left greys out at the last stop; the controls fit the 375 wide screen.
+- The cut-out figures' eyes sit at half the screen's height when the camera
+  faces them.
+- A drag slides along the path and stops at both ends, and the counter
+  follows. The mouse wheel does nothing during the walk.
+- Full view and Reset view end the walk and return to the starting view, and
+  the scene's own limits hold again after it.
+- The sample scene (`?config=hotspots`) shows no walk button and its
+  hotspots still open.
+
 Checked for v1 and the view limits (2026-11-19, the same desktop browser):
 
 - The default page opens v1. Its starting view shows the whole display, level,
@@ -360,6 +434,15 @@ Not checked:
   this prototype and need a native reader's review.
 
 Known gaps:
+
+- The walk's two end stops look rough. They view the display from 45 degrees
+  to the side, from over its front corners, where no photo was taken: the
+  front trays smear into streaks and the flat cut-out figures look thin. The
+  three to five stops in between look close to the photos. Smaller `angles`
+  (say `[30, -30]`) trade the curve for a cleaner picture.
+- On a landscape screen the walk's view is about 30 to 42 degrees tall, so
+  the top of the display is out of the picture, as it is for someone
+  standing that close who does not look up.
 
 - Data use: the Annakut scene is 34 MB on disk (v0: 36 MB) and a
   phone-sized session that zoomed in downloaded all of v0. The sample is 52 MB on disk, and a

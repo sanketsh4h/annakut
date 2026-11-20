@@ -15,6 +15,7 @@
 //   ?config=name   load site/name.json instead of the default scene, for
 //                  example ?config=hotspots for the sample scene
 //   ?nolimits   ignore the scene's "viewLimits" (for authoring only)
+//   ?walk       start in the walk along the display, if the scene has one
 
 import { createViewer } from '@playcanvas/supersplat-viewer/viewer';
 import { defaultSettings } from '@playcanvas/supersplat-viewer/settings';
@@ -38,6 +39,10 @@ const STRINGS = {
         prev: 'Previous',
         next: 'Next',
         close: 'Close',
+        walkStart: 'Walk along the display',
+        walkNext: 'Move left',
+        walkBack: 'Step back to the right',
+        walkExit: 'Full view',
         quality: 'quality',
         idle: 'idle',
         failed: 'This device or browser could not start the 3D viewer.'
@@ -51,6 +56,10 @@ const STRINGS = {
         prev: 'પાછળ',
         next: 'આગળ',
         close: 'બંધ કરો',
+        walkStart: 'ચાલતાં ચાલતાં દર્શન',
+        walkNext: 'ડાબી તરફ આગળ',
+        walkBack: 'જમણી તરફ પાછા',
+        walkExit: 'પૂરું દૃશ્ય',
         quality: 'quality',
         idle: 'idle',
         failed: 'આ ઉપકરણ અથવા બ્રાઉઝર પર 3D વ્યૂઅર શરૂ થઈ શક્યું નથી.'
@@ -136,14 +145,18 @@ function fitToScreen(pose, square) {
 // The controller does not clamp the distance of a pose it is attached to, so
 // the hook below brings it into the zoom range itself (and, on "Reset view",
 // to the farthest zoom, which may have changed if the screen was turned).
+//
+// The limits in force can change while the page is open: the walk along the
+// display (further down) swaps in its own and puts the scene's back after.
 let activeLimits = null;
+let limitsApplied = false;
 let orbitController = null;
 let resetting = false;
 const attachOrbit = OrbitController.prototype.attach;
 OrbitController.prototype.attach = function (pose, smooth) {
     orbitController = this;
+    if (activeLimits || limitsApplied) applyViewLimits(this, activeLimits);
     if (activeLimits) {
-        applyViewLimits(this, activeLimits);
         const range = activeLimits.distance;
         if (range) pose = poseAtDistance(pose, resetting ? range[1] : Math.min(Math.max(pose.distance, range[0]), range[1]));
     }
@@ -199,14 +212,18 @@ function zoomDistances(start, zoom) {
     return [far / (zoom.in ?? 4), far];
 }
 
+// Sets the controller's ranges from `limits`. Anything `limits` leaves out, or
+// everything when it is null, goes back to what the viewer starts with.
 function applyViewLimits(controller, limits) {
-    const { yaw, pitch, ground, focusBox, distance } = limits;
+    const { yaw, pitch, ground, focusBox, distance } = limits || {};
     if (pitch) {
         const low = Number.isFinite(ground) ? Math.max(pitch[0], 0) : pitch[0];
         // The engine's pitch is negative when looking down, i.e. camera above.
         controller.pitchRange = new Vec2(-pitch[1], -low);
+    } else {
+        controller.pitchRange = new Vec2(-90, 90);
     }
-    if (yaw) controller.yawRange = new Vec2(yaw[0], yaw[1]);
+    controller.yawRange = yaw ? new Vec2(yaw[0], yaw[1]) : new Vec2(-Infinity, Infinity);
     // The focus point's box lives on the controller's target pose (Pose.xRange
     // and friends are public; the controller only exposes the pose privately).
     const focus = controller._targetRootPose;
@@ -215,7 +232,65 @@ function applyViewLimits(controller, limits) {
     focus.xRange.set(min[0], max[0]);
     focus.yRange.set(Number.isFinite(ground) ? Math.max(min[1], ground) : min[1], max[1]);
     focus.zRange.set(min[2], max[2]);
-    if (distance) controller.zoomRange = new Vec2(distance[0], distance[1]);
+    controller.zoomRange = distance ? new Vec2(distance[0], distance[1]) : new Vec2(0.01, Infinity);
+    limitsApplied = Boolean(limits);
+}
+
+// ----- walk along the display ------------------------------------------------
+//
+// A scene description can offer a walk past the display, the way a visitor
+// walks round the front of it:
+//
+//   "walk": {
+//     "eyeHeight": 1.91,     height (Y) of the camera. The view is level, so
+//                            whatever is at this height sits halfway up the screen
+//     "center":    [0, -0.7],  X and Z of the point the path curves round. The
+//                            camera faces it all the way
+//     "radius":    6.4,      how far the camera stays from that point
+//     "angles":    [45, -45],  where on that circle the walk starts and ends, in
+//                            degrees: 0 is straight in front of the display
+//                            (toward +Z), positive is the visitor's right
+//     "fov":       60,       field of view, across the screen's longer side
+//     "stops":     5,        at least this many stops, the two ends included
+//     "step":      0.6       and no two stops further apart than this share of
+//                            the angle in view across the screen
+//   }
+//
+// The path is an arc of a circle, seen from above. The camera keeps its height,
+// its distance from the centre and its field of view for the whole walk, so
+// nothing at the centre changes size on the way. The number of stops depends
+// on the screen, because a phone held upright sees a narrower strip than a
+// wide screen does.
+function walkStops(walk) {
+    const aspect = Math.min(1, window.innerWidth / window.innerHeight);
+    const across = (2 * Math.atan(Math.tan(((walk.fov ?? 60) * Math.PI) / 360) * aspect) * 180) / Math.PI;
+    const [from, to] = walk.angles;
+    const steps = Math.ceil(Math.abs(to - from) / (across * (walk.step ?? 0.6)));
+    const count = Math.max(walk.stops ?? 5, steps + 1, 2);
+    return Array.from({ length: count }, (_, i) => round3(from + ((to - from) * i) / (count - 1)));
+}
+
+function walkPose(walk, angle) {
+    const [x, z] = walk.center;
+    const turn = (angle * Math.PI) / 180;
+    return {
+        position: [round3(x + walk.radius * Math.sin(turn)), walk.eyeHeight, round3(z + walk.radius * Math.cos(turn))],
+        target: [x, walk.eyeHeight, z],
+        fov: walk.fov ?? 60
+    };
+}
+
+// During the walk the camera can only go along its path: a drag slides it
+// along the arc, and there is no tilting, panning or zoom.
+function walkLimits(walk) {
+    const [x, z] = walk.center;
+    const point = [x, walk.eyeHeight, z];
+    return {
+        yaw: [Math.min(...walk.angles), Math.max(...walk.angles)],
+        pitch: [0, 0],
+        focusBox: { min: point, max: point },
+        distance: [walk.radius, walk.radius]
+    };
 }
 
 function showError(error) {
@@ -256,23 +331,26 @@ async function main() {
     } else if (config.fitPortrait !== false) {
         settings.cameras = settings.cameras.map((c) => ({ initial: fitToScreen(c.initial, config.fitSquare === true) }));
     }
+    // The scene's own limits, which the walk puts back when it ends.
+    let sceneLimits = null;
     if (config.viewLimits && !params.has('nolimits')) {
-        activeLimits = { ...config.viewLimits };
+        const limits = { ...config.viewLimits };
         if (zoom) {
             const start = settings.cameras[0]?.initial || config.initialCamera;
-            activeLimits.distance = zoomDistances(start, zoom);
+            limits.distance = zoomDistances(start, zoom);
             // A turned or resized screen changes how far out the display fills it.
             window.addEventListener('resize', () => {
-                activeLimits.distance = zoomDistances(start, zoom);
-                if (orbitController) orbitController.zoomRange = new Vec2(...activeLimits.distance);
+                limits.distance = zoomDistances(start, zoom);
+                if (orbitController && activeLimits === limits) orbitController.zoomRange = new Vec2(...limits.distance);
             });
         }
         // Never let the zoom limit undo the step-back to the starting view.
         const start = settings.cameras[0]?.initial;
-        if (start && activeLimits.distance) {
+        if (start && limits.distance) {
             const away = Math.hypot(...start.position.map((p, i) => p - start.target[i]));
-            activeLimits.distance = [activeLimits.distance[0], Math.max(activeLimits.distance[1], away)];
+            limits.distance = [limits.distance[0], Math.max(limits.distance[1], away)];
         }
+        sceneLimits = activeLimits = limits;
     }
     // Each hotspot is also a viewer annotation, so the viewer can fly the
     // camera to its authored viewpoint. We draw the hotspots ourselves.
@@ -283,6 +361,19 @@ async function main() {
         extras: { id: h.id },
         camera: { initial: h.camera }
     }));
+    // The walk borrows the same fly-to: one more annotation, after the
+    // hotspots, whose viewpoint is rewritten for each stop.
+    const walk = config.walk || null;
+    const walkSlot = hotspots.length;
+    if (walk) {
+        settings.annotations.push({
+            position: [walk.center[0], walk.eyeHeight, walk.center[1]],
+            title: 'walk',
+            text: '',
+            extras: { id: 'walk' },
+            camera: { initial: walkPose(walk, walk.angles[0]) }
+        });
+    }
 
     const options = {
         container: $('viewer'),
@@ -392,6 +483,8 @@ async function main() {
     };
 
     function openHotspot(index) {
+        // A hotspot's viewpoint is outside the walk's track.
+        if (walking) leaveWalk(false);
         current = (index + hotspots.length) % hotspots.length;
         viewer.selectAnnotation(current);
         markers.forEach((m, i) => m.el.classList.toggle('active', i === current));
@@ -426,9 +519,121 @@ async function main() {
     $('reset').addEventListener('click', () => {
         closeSheet();
         if (!viewer.state.loaded) return;
+        if (walking) {
+            leaveWalk(true);
+            return;
+        }
         resetting = true;
         viewer.resetCamera();
     });
+
+    // ----- walk along the display ------------------------------------------
+
+    let walking = false;
+    let walkAngles = [];
+    let walkIndex = 0;
+
+    const renderWalk = () => {
+        if (!walk) return;
+        $('walk-start').hidden = walking;
+        $('walk-steps').hidden = !walking;
+        $('walk-start').textContent = t('walkStart');
+        $('walk-next').textContent = `‹ ${t('walkNext')}`;
+        $('walk-next').disabled = walkIndex >= walkAngles.length - 1;
+        $('walk-back').disabled = walkIndex <= 0;
+        $('walk-back').setAttribute('aria-label', t('walkBack'));
+        $('walk-exit').textContent = t('walkExit');
+        $('walk-count').textContent = `${walkIndex + 1} / ${walkAngles.length}`;
+    };
+
+    // The viewer's keyboard and gamepad move the camera freely (see the note
+    // where the scene starts), so they are off whenever limits are in force.
+    let freeInput = null;
+    const syncInput = () => {
+        const state = viewer.state;
+        if (activeLimits && !freeInput) {
+            freeInput = { inputEnabled: state.inputEnabled, gamingControls: state.gamingControls };
+            state.inputEnabled = false;
+            state.gamingControls = false;
+        } else if (!activeLimits && freeInput) {
+            state.inputEnabled = freeInput.inputEnabled;
+            state.gamingControls = freeInput.gamingControls;
+            freeInput = null;
+        }
+    };
+
+    // Glides to a stop, with the viewer's own fly-to.
+    function goToStop(index) {
+        walkIndex = Math.min(Math.max(index, 0), walkAngles.length - 1);
+        viewer.annotations[walkSlot].camera = { initial: walkPose(walk, walkAngles[walkIndex]) };
+        viewer.selectAnnotation(walkSlot);
+        renderWalk();
+    }
+
+    function enterWalk() {
+        if (!walk || walking || !viewer.state.loaded) return;
+        closeSheet();
+        walking = true;
+        document.body.classList.add('walking');
+        walkAngles = walkStops(walk);
+        activeLimits = walkLimits(walk);
+        syncInput();
+        hideHint();
+        goToStop(0);
+    }
+
+    // Ends the walk. With `reset` the camera goes back to the full view;
+    // without, the caller is about to send it somewhere else.
+    function leaveWalk(reset) {
+        if (!walking) return;
+        walking = false;
+        document.body.classList.remove('walking');
+        activeLimits = sceneLimits;
+        syncInput();
+        viewer.selectAnnotation(null);
+        renderWalk();
+        if (reset) {
+            resetting = true;
+            viewer.resetCamera();
+        }
+    }
+
+    if (walk) {
+        $('walk-start').addEventListener('click', enterWalk);
+        $('walk-next').addEventListener('click', () => goToStop(walkIndex + 1));
+        $('walk-back').addEventListener('click', () => goToStop(walkIndex - 1));
+        $('walk-exit').addEventListener('click', () => leaveWalk(true));
+        const leftward = walk.angles[1] < walk.angles[0] ? 1 : -1;
+        window.addEventListener('keydown', (event) => {
+            if (!walking) return;
+            if (event.key === 'Escape') leaveWalk(true);
+            if (event.key === 'ArrowLeft') goToStop(walkIndex + leftward);
+            if (event.key === 'ArrowRight') goToStop(walkIndex - leftward);
+        });
+        // After a drag along the path, carry on from the stop nearest to
+        // where the visitor let go.
+        const afterDrag = () => {
+            if (!walking || !orbitController) return;
+            const angle = orbitController._targetRootPose.angles.y;
+            let nearest = 0;
+            walkAngles.forEach((a, i) => {
+                if (Math.abs(a - angle) < Math.abs(walkAngles[nearest] - angle)) nearest = i;
+            });
+            if (nearest !== walkIndex) {
+                walkIndex = nearest;
+                renderWalk();
+            }
+        };
+        $('viewer').addEventListener('pointerup', afterDrag, { passive: true });
+        $('viewer').addEventListener('pointercancel', afterDrag, { passive: true });
+        // A turned or resized screen sees a different width, so the stops move.
+        window.addEventListener('resize', () => {
+            if (!walking) return;
+            const done = walkAngles.length > 1 ? walkIndex / (walkAngles.length - 1) : 0;
+            walkAngles = walkStops(walk);
+            goToStop(Math.round(done * (walkAngles.length - 1)));
+        });
+    }
 
     // ----- hint ------------------------------------------------------------
 
@@ -458,6 +663,7 @@ async function main() {
             m.el.setAttribute('aria-label', tr(hotspots[i].title));
         });
         renderSheet();
+        renderWalk();
     };
 
     $('lang').addEventListener('click', () => {
@@ -507,16 +713,18 @@ async function main() {
     firstFrame = ` · first view ${(performance.now() / 1000).toFixed(1)}s`;
     // Start still, in the authored view, ready for the visitor to drag.
     if (viewer.state.cameraMode !== 'orbit') viewer.state.cameraMode = 'orbit';
-    if (activeLimits) {
-        // The limits are on the orbit camera only. The viewer's keyboard
-        // (WASD, arrows, 2 and 3) and gamepad switch to free fly and walk
-        // modes, so a limited scene turns those inputs off, and puts the
-        // camera straight back into orbit if anything else switches it.
-        viewer.state.inputEnabled = false;
-        viewer.state.gamingControls = false;
-        viewer.events.on('cameraMode:changed', (mode) => {
-            if (mode !== 'orbit') viewer.state.cameraMode = 'orbit';
-        });
+    // The limits are on the orbit camera only. The viewer's keyboard (WASD,
+    // arrows, 2 and 3) and gamepad switch to free fly and walk modes, so those
+    // inputs are off while limits are in force, and the camera goes straight
+    // back into orbit if anything else switches it.
+    syncInput();
+    viewer.events.on('cameraMode:changed', (mode) => {
+        if (activeLimits && mode !== 'orbit') viewer.state.cameraMode = 'orbit';
+    });
+    if (walk) {
+        document.body.classList.add('has-walk');
+        $('walk').hidden = false;
+        renderWalk();
     }
     $('loading').classList.add('done');
     document.body.classList.add('ready');
@@ -527,6 +735,7 @@ async function main() {
     hintTimer = setTimeout(hideHint, 7000);
 
     if (params.has('place')) enablePlaceMode(viewer, getCamera);
+    if (walk && params.has('walk')) enterWalk();
 }
 
 // ---------------------------------------------------------------------------
