@@ -14,15 +14,16 @@
 //   ?cam=px,py,pz,tx,ty,tz[,fov]   try a starting camera position and target
 //   ?config=name   load site/name.json instead of the default scene, for
 //                  example ?config=hotspots for the sample scene
+//   ?nolimits   ignore the scene's "viewLimits" (for authoring only)
 
 import { createViewer } from '@playcanvas/supersplat-viewer/viewer';
 import { defaultSettings } from '@playcanvas/supersplat-viewer/settings';
-import { Mat4, Picker, Vec3 } from 'playcanvas';
+import { Mat4, OrbitController, Picker, Vec2, Vec3 } from 'playcanvas';
 
 // The scene the page opens with: site/<name>.json. Scene descriptions and
 // their folders are versioned (last-year-v0, last-year-v1, ...), so putting a
 // better model live is a change to this one line.
-const DEFAULT_CONFIG = 'last-year-v0';
+const DEFAULT_CONFIG = 'last-year-v1';
 
 const params = new URLSearchParams(location.search);
 const $ = (id) => document.getElementById(id);
@@ -99,6 +100,57 @@ function fitToScreen(pose, square) {
     return { ...pose, position };
 }
 
+// ----- view limits -----------------------------------------------------------
+//
+// A scene description can hold the camera to a window of views:
+//
+//   "viewLimits": {
+//     "yaw":      [-75, 75],   degrees round the point the camera orbits;
+//                              0 looks toward -Z, negative is the visitor's left
+//     "pitch":    [0, 75],     degrees above that point's horizon
+//     "ground":   0,           height (Y) of the floor
+//     "focusBox": { "min": [x, y, z], "max": [x, y, z] },
+//                              where the orbited point may go when panning
+//     "distance": [1.5, 16]    closest and farthest zoom, from that point
+//   }
+//
+// The viewer's orbit camera is PlayCanvas's OrbitController, which the viewer
+// imports from the same 'playcanvas' module as this file. That controller has
+// these limits built in (pitch and yaw ranges, a box for its focus point, a
+// zoom range) but the viewer leaves them open and its handle cannot set them.
+// So they are applied here each time the controller is attached to a pose: on
+// entering orbit mode, on reset and on a hotspot fly-to. The controller then
+// clamps every drag, pan and pinch, with its usual smoothing.
+//
+// The ground rule follows from the other two: the camera never goes below the
+// point it orbits (lowest pitch 0), and that point never goes below "ground".
+// With a "ground", a lower pitch below 0 is therefore raised to 0.
+let activeLimits = null;
+const attachOrbit = OrbitController.prototype.attach;
+OrbitController.prototype.attach = function (pose, smooth) {
+    if (activeLimits) applyViewLimits(this, activeLimits);
+    return attachOrbit.call(this, pose, smooth);
+};
+
+function applyViewLimits(controller, limits) {
+    const { yaw, pitch, ground, focusBox, distance } = limits;
+    if (pitch) {
+        const low = Number.isFinite(ground) ? Math.max(pitch[0], 0) : pitch[0];
+        // The engine's pitch is negative when looking down, i.e. camera above.
+        controller.pitchRange = new Vec2(-pitch[1], -low);
+    }
+    if (yaw) controller.yawRange = new Vec2(yaw[0], yaw[1]);
+    // The focus point's box lives on the controller's target pose (Pose.xRange
+    // and friends are public; the controller only exposes the pose privately).
+    const focus = controller._targetRootPose;
+    const min = focusBox?.min || [-Infinity, -Infinity, -Infinity];
+    const max = focusBox?.max || [Infinity, Infinity, Infinity];
+    focus.xRange.set(min[0], max[0]);
+    focus.yRange.set(Number.isFinite(ground) ? Math.max(min[1], ground) : min[1], max[1]);
+    focus.zRange.set(min[2], max[2]);
+    if (distance) controller.zoomRange = new Vec2(distance[0], distance[1]);
+}
+
 function showError(error) {
     console.error(error);
     $('loading').classList.add('done');
@@ -128,6 +180,15 @@ async function main() {
     // can opt out of the step-back with "fitPortrait": false.
     if (config.fitPortrait !== false) {
         settings.cameras = settings.cameras.map((c) => ({ initial: fitToScreen(c.initial, config.fitSquare === true) }));
+    }
+    if (config.viewLimits && !params.has('nolimits')) {
+        activeLimits = { ...config.viewLimits };
+        // Never let the zoom limit undo the step-back to the starting view.
+        const start = settings.cameras[0]?.initial;
+        if (start && activeLimits.distance) {
+            const away = Math.hypot(...start.position.map((p, i) => p - start.target[i]));
+            activeLimits.distance = [activeLimits.distance[0], Math.max(activeLimits.distance[1], away)];
+        }
     }
     // Each hotspot is also a viewer annotation, so the viewer can fly the
     // camera to its authored viewpoint. We draw the hotspots ourselves.
@@ -360,6 +421,17 @@ async function main() {
     firstFrame = ` · first view ${(performance.now() / 1000).toFixed(1)}s`;
     // Start still, in the authored view, ready for the visitor to drag.
     if (viewer.state.cameraMode !== 'orbit') viewer.state.cameraMode = 'orbit';
+    if (activeLimits) {
+        // The limits are on the orbit camera only. The viewer's keyboard
+        // (WASD, arrows, 2 and 3) and gamepad switch to free fly and walk
+        // modes, so a limited scene turns those inputs off, and puts the
+        // camera straight back into orbit if anything else switches it.
+        viewer.state.inputEnabled = false;
+        viewer.state.gamingControls = false;
+        viewer.events.on('cameraMode:changed', (mode) => {
+            if (mode !== 'orbit') viewer.state.cameraMode = 'orbit';
+        });
+    }
     $('loading').classList.add('done');
     document.body.classList.add('ready');
     requestAnimationFrame(placeMarkers);
