@@ -102,6 +102,9 @@ scripts/
   vendor.mjs          refreshes site/vendor after a package upgrade
   build-scene.sh      turns one trained splat into site/scene
 scan-pipeline/        reference copy of the gpu machine's scan scripts
+  refine/             the scripts that made the live model: depth targets,
+                      training with a depth loss, clean-up, levelling, crop
+PIPELINE.md           the whole method, photos to the live view, step by step
 ```
 
 `site/` has no build step. Any static host (Vercel, Netlify, GitHub Pages) can
@@ -160,12 +163,11 @@ trays, tall and shallow at the canopy, with the domes on top. It is made from
 the display's own clearly reconstructed surfaces (opaque, small splats), cut
 into height bands 0.25 units tall; each band's outline seen from above,
 grown by 0.25 units, is what that band keeps. The script is
-`last-year-3d/splat-v1/tools/crop_hull.py`, kept with the other training
-tools outside the repository (not committed), and runs on the levelled `.ply` before
-`build-scene.sh`:
+`scan-pipeline/refine/crop_hull.py`, and runs on the levelled `.ply` before
+`build-scene.sh` (`PIPELINE.md`, stage 5, has the whole clean-up in order):
 
 ```bash
-python3 crop_hull.py level.ply cropped.ply \
+python3 scan-pipeline/refine/crop_hull.py level.ply cropped.ply \
   --box=-4.5,-0.4,-3.95,4.7,5.7,3.95 --box=-2.9,5.7,-3.2,2.9,7.1,-1.3 \
   --fringe-box=-4.75,0.5,-3.75,4.5,5.75,4.0 --keep-box=-0.8,5.5,-2.2,0.8,7.05,-1.35
 ```
@@ -183,6 +185,11 @@ same thin, faint splats as the streaks round it, so `--keep-box` exempts it.
 ## Making a scene from a new scan
 
 Shoot the photos by `CAPTURE-CHECKLIST.md` first.
+
+`PIPELINE.md` is the full method that made the live model (depth targets,
+training, clean-up, levelling, the crop to the display), followed by the
+viewer, the angle caps and the walk. The short version below is the plain
+route without the extra training and clean-up steps.
 
 1. Train the splat on the gpu machine and copy the `.ply` here (see
    `~/sshah_workspace/projects/pipeline/README.md` on that machine).

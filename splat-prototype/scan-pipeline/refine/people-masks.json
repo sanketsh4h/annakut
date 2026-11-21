@@ -1,0 +1,7 @@
+{
+  "note": "Boxes to leave out of the training loss, as fractions of image width/height (x0, y0, x1, y1). Drawn by eye on 1200x900 copies: standing person at the left edge, plus a margin.",
+  "IMG_1523": [[0.1667, 0.0, 0.2833, 0.3167]],
+  "IMG_1524": [[0.0, 0.0, 0.1583, 0.2944]],
+  "IMG_1525": [[0.0, 0.0, 0.1792, 0.4500]],
+  "IMG_1518": [[0.1125, 0.2167, 0.1625, 0.3500]]
+}
