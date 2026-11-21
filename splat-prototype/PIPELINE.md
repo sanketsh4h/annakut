@@ -588,9 +588,15 @@ and on an Android phone if one is at hand. On each:
    quality` on the iPhone and `WebGPU · default quality` on Chrome (laptop or
    Android).
 2. Drag for a few seconds and read the frame rate while it moves. Note it
-   with the phone's model. (No real-phone frame rate has been recorded yet.)
+   with the phone's model in the table below.
 3. Take the walk and screenshot stop 1, the middle stop and the last stop on
    the phone; compare them with the same stops on the laptop.
+
+Frame rates measured on real phones, while dragging, on the live site:
+
+| Date | Phone | Browser, renderer | Model | Frame rate |
+| --- | --- | --- | --- | --- |
+| 2026-11-21 | iPhone 15 Pro | Safari, WebGL 2, `default` quality | `last-year-v2` (848,702 splats) | 45 to 60 fps |
 
 If the phone looks worse than the laptop:
 

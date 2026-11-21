@@ -444,10 +444,13 @@ Checked for v1 and the view limits (2026-11-19, the same desktop browser):
 
 Not checked:
 
-- Numbers from a real phone. The page was opened on one phone over Wi-Fi and
-  worked, but frame rate, memory and load time were not recorded, and only
-  that one device was tried.
-- Hosting over HTTPS, and loading over mobile data.
+- Most numbers from real phones. One frame rate is recorded: an iPhone 15
+  Pro in Safari on the live site, WebGL 2 at `default` quality, ran the v2
+  model at 45 to 60 fps while dragging (2026-11-21; PIPELINE.md, 6e, keeps
+  the table). Memory and load time were not recorded, and no Android phone
+  or older iPhone has been tried.
+- Loading over mobile data. The live site is on HTTPS (GitHub Pages) and
+  has been opened on that iPhone over Wi-Fi.
 - Pinch zoom and two-finger pan with real fingers. The limits work on the
   camera itself, whatever the input, but no touch screen was used.
 - Load times for v1: the test machine was busy with other work at the time
