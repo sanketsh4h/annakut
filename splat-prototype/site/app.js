@@ -6,7 +6,9 @@
 // plain HTML in this file, driven through the viewer's documented handle.
 //
 // Useful URL switches while testing:
-//   ?webgl      force the WebGL 2 renderer (default is WebGPU where available)
+//   ?webgl      force the WebGL 2 renderer (default is WebGPU where available,
+//               except in Safari's engine, which gets WebGL 2: see below)
+//   ?webgpu     use WebGPU in Safari's engine too (it draws streaks there)
 //   ?budget=1   cap the splat budget, in millions
 //   ?stats      show the engine's performance graphs
 //   ?lang=gu    start in Gujarati
@@ -383,16 +385,29 @@ async function main() {
         // Without this the viewer starts by slowly circling the scene on its own.
         noanim: true
     };
-    if (params.has('webgl')) options.renderer = 'webgl';
+    // Safari's WebGPU draws this scan with heavy brushstroke streaks that
+    // WebGL 2 does not (seen on an iPhone in November 2026: the same view was
+    // clean with ?webgl). Every browser on an iPhone or iPad runs Safari's
+    // engine, and so does Safari on a Mac, so those get WebGL 2 unless
+    // ?webgpu asks for WebGPU. Chromium browsers (Chrome, Edge, Brave,
+    // Android) carry "Chrome/" in their user agent and keep WebGPU.
+    const ua = navigator.userAgent;
+    const safariEngine = /AppleWebKit/.test(ua) && !/Chrome\/|Chromium\//.test(ua);
+    if (params.has('webgl') || (safariEngine && !params.has('webgpu'))) options.renderer = 'webgl';
     if (params.has('budget')) options.budget = Number(params.get('budget'));
     if (params.has('stats')) options.ministats = true;
 
     // On phones the viewer starts at its "performance" quality, which draws
     // the scene at half resolution and makes this scan look blocky and noisy.
     // Start every device at "default" (full resolution) instead. The viewer
-    // keeps a visitor's own choice (tapping the readout) under the same key,
-    // so a choice already made is left alone.
-    if (store.get('quality') === null) store.set('quality', 'default');
+    // saves a visitor's taps on the readout under the same key. Phones that
+    // visited earlier may have "performance" saved from before this fix, so
+    // the first visit with it resets anything below "high" once; after that
+    // the visitor's own choice is kept.
+    if (store.get('annakut-quality-reset') === null) {
+        if (!['high', 'max'].includes(store.get('quality'))) store.set('quality', 'default');
+        store.set('annakut-quality-reset', '1');
+    }
 
     const viewer = await createViewer(options);
     const app = viewer.app;

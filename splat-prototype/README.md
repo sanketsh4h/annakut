@@ -40,8 +40,12 @@ The server prints two addresses: `http://localhost:4173` for this computer and
 a `Same Wi-Fi` address to open on a phone connected to the same network.
 
 Over plain `http://` on Wi-Fi a phone uses the WebGL 2 renderer, because
-browsers only allow WebGPU on `https://` pages. Once the site is hosted over
-HTTPS, phones that support WebGPU switch to it automatically.
+browsers only allow WebGPU on `https://` pages. Over HTTPS, Chromium browsers
+(Chrome, Edge, Brave, Android phones) use WebGPU where they support it.
+Browsers on Safari's engine stay on WebGL 2: that is every browser on an
+iPhone or iPad, and Safari on a Mac. On an iPhone, Safari's WebGPU drew the
+scan with heavy brushstroke streaks that the same view with WebGL 2 did not
+have. `?webgpu` turns it back on for testing.
 
 The small readout at the bottom left shows which renderer is in use, the
 quality level the viewer chose for the device, the frame rate while the scene
@@ -50,10 +54,12 @@ levels.
 
 Every device starts at the viewer's `default` quality. Left to itself the
 viewer starts phones at `performance`, which draws at half resolution and
-made the scan look blocky and noisy on phones. `app.js` overrides that unless
-the visitor has already picked a level by tapping the readout. The viewer
-saves that choice in the browser, so it sticks until it is changed. If a
-phone runs too slowly, tapping round to `performance` is the way back.
+made the scan look blocky and noisy on phones. `app.js` overrides that. The
+viewer saves a level picked by tapping the readout in the browser, so a
+phone that had `performance` saved from before the fix is reset to `default`
+once, on its first visit with it (marked by `annakut-quality-reset` in the
+browser's storage). After that the visitor's own choice sticks. If a phone
+runs too slowly, tapping round to `performance` is the way back.
 
 ### Test switches
 
@@ -62,6 +68,7 @@ Add these to the address, for example `http://localhost:4173/?webgl&stats`.
 | Switch | Effect |
 | --- | --- |
 | `?webgl` | Force the WebGL 2 renderer |
+| `?webgpu` | Use WebGPU in Safari's engine too (iPhone, iPad, Safari on a Mac), which otherwise gets WebGL 2 |
 | `?budget=1` | Cap the scene at this many million splats |
 | `?stats` | Show the engine's performance graphs |
 | `?lang=gu` | Start in Gujarati |
