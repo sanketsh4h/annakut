@@ -13,7 +13,7 @@ It has six stages:
 | 3 | Depth targets: dense stereo, then monocular depth for the gaps | gpu machine, GTX 1080 | 10 to 15 min |
 | 4 | Train the Gaussian splat (gsplat, with a depth loss) | gpu machine, TITAN V | 28 min |
 | 5 | Enhance: remove floaters, level, crop to the display's boundary | gpu machine, then Mac | a few minutes |
-| 6 | Web scene: streamed build, the viewer, the angle caps, the rotating view | Mac | about 5 min to build |
+| 6 | Web scene: streamed build, the viewer, the angle caps, the rotating view, the phone and laptop check | Mac, then a real phone | about 5 min to build, 3 min to check |
 
 Why this method: three were tested side by side (splat, NeRF mesh, COLMAP
 mesh; `3D-METHODS-FINDINGS.md`). The splat looked most like the photos, NeRF
@@ -34,6 +34,7 @@ bad; only more photos fix that (stage 1).
 | Pose and plain-training scripts, power log | `scan-pipeline/` |
 | Scene build script | `scripts/build-scene.sh` |
 | Viewer, angle caps, rotating view | `site/app.js`, `site/last-year-v2.json` (stage 6b to 6d) |
+| Phone and laptop check | `scripts/device-check.mjs` (stage 6e) |
 | Tool versions and set-up on the gpu machine | `scan-pipeline/ENVIRONMENT.md` |
 | Full results and every number | `last-year-3d/splat-v0/FINDINGS.md`, `last-year-3d/splat-v1/FINDINGS.md` (not in the repo) |
 | Photos, trained and levelled `.ply` files | `last_year_annakut/` (never committed: GPS, people, size) |
@@ -307,7 +308,7 @@ covering the hall and the white streaks over the shrine.
 Check the result by loading it (stage 6) and looking from the front, both
 sides and above for cut edges and for anything real that went missing.
 
-## 6. Web scene: build, viewer, angle caps, rotating view
+## 6. Web scene: build, viewer, angle caps, rotating view, device check
 
 ### 6a. Build the streamed scene
 
@@ -334,7 +335,8 @@ This is what keeps the render light enough for a phone:
 To check on a device: the readout at the bottom left shows the renderer, the
 quality level, the frame rate and the time to the first view. `?stats` shows
 the engine's graphs, `?budget=1` caps the scene at a million splats, `?webgl`
-forces WebGL 2.
+forces WebGL 2. Stage 6e is the full check that a phone shows the same
+quality as a laptop.
 
 ### 6b. The viewer
 
@@ -511,14 +513,106 @@ uses the same caps mechanism, swapped in while the walk is on. Height,
 distance and field of view do not change along the way, so nothing changes
 size. README, "Walking along the display", has the rest.
 
-### 6e. Put it live
+### 6e. Same quality on a phone and a laptop
 
-1. Check `http://localhost:4173/?config=last-year-v3` at 375 × 812, sideways,
-   and on a desktop window, with and without `?webgl`.
+A model that looks right on a laptop can look far worse on a phone, from
+the same files, for reasons that have nothing to do with the model. On
+2026-11-21 the 2025 model looked fine on a laptop and "bad, unclear, noisy"
+on an iPhone. There were two causes, both in the page, and both are now
+handled in `site/app.js`:
+
+- **Half resolution.** Left to itself the viewer starts phones at its
+  "performance" quality, which draws the scene at half resolution. `app.js`
+  starts every device at "default". A phone keeps a level picked by tapping
+  the readout, so `app.js` also resets a saved level below "high" once per
+  browser (the `annakut-quality-reset` key in the browser's storage).
+- **Safari's WebGPU.** It drew the scan with heavy brushstroke streaks. The
+  same view with `?webgl` on the same iPhone was clean. Every browser on an
+  iPhone or iPad runs Safari's engine, and so does Safari on a Mac, so those
+  get WebGL 2. Chromium browsers keep WebGPU. `?webgpu` turns it back on in
+  Safari for testing.
+
+Chrome on a Mac never shows the second problem, which is why the check
+below has a step on a real iPhone. Run all three steps for every new model,
+and again after upgrading the viewer or the engine (`scripts/vendor.mjs`).
+
+**Step 1. Automatic check, on the Mac.** With `node scripts/serve.mjs`
+running:
+
+```bash
+node scripts/device-check.mjs "http://localhost:4173/?config=last-year-v3"
+```
+
+It opens the page in headless Chromium as a laptop, an Android phone, an
+iPhone with Safari, an iPhone with Chrome and Safari on a Mac, each in a
+fresh profile. Every one must pass:
+
+| Check | Pass |
+| --- | --- |
+| Renderer | WebGPU on the laptop and Android; WebGL 2 on both iPhones and Mac Safari |
+| Quality | `default` on all five |
+| Canvas | Full resolution: the display's pixel ratio, capped at 1080 pixels on a phone's shorter side (2160 elsewhere) |
+| Scene files | Every file loads; none fails or returns an error |
+| Page errors | None |
+
+It prints one line per device and exits with 1 if anything fails. It also
+photographs the start view and the walk's first and last stops on every
+device, and writes `index.html` with them side by side (in the system's
+temporary folder unless `--out` names one). Look at that page: apart from
+the screen's shape, the phone pictures should look like the laptop's. A
+blemish that shows on every device at the same view is the model, not the
+page; fix it in stage 5 or keep the caps (6c) and the walk (6d) away from
+it.
+
+It needs Playwright. On this Mac it is in another project:
+`PLAYWRIGHT_PATH=~/Projects/digital_outreach/node_modules node scripts/device-check.mjs ...`.
+Elsewhere, `npm install --no-save playwright` and
+`npx playwright install chromium` in this folder.
+
+The pictures are all drawn by Chromium, including the Safari rows: those
+rows only prove the page picks WebGL 2 for Safari. Safari's own drawing
+needs step 3.
+
+**Step 2. Put it on an `https://` address.** A phone cannot reach the Mac's
+`node scripts/serve.mjs` reliably: on 2026-11-21 the iPhone's Safari would
+not open the Mac's Wi-Fi address and the server saw no visit. Browsers also
+only allow WebGPU on `https://`. So the phone check runs on the published
+site (6f), or on another `https://` address if one is set up first. GitHub
+Pages keeps files for up to 10 minutes (`max-age=600`), so after a push wait
+that long, then reload.
+
+**Step 3. Real phone and laptop.** Open the site on an iPhone, on a laptop,
+and on an Android phone if one is at hand. On each:
+
+1. Read the readout at the bottom left. It should say `WebGL 2 · default
+   quality` on the iPhone and `WebGPU · default quality` on Chrome (laptop or
+   Android).
+2. Drag for a few seconds and read the frame rate while it moves. Note it
+   with the phone's model. (No real-phone frame rate has been recorded yet.)
+3. Take the walk and screenshot stop 1, the middle stop and the last stop on
+   the phone; compare them with the same stops on the laptop.
+
+If the phone looks worse than the laptop:
+
+| What the phone shows | Cause | What to do |
+| --- | --- | --- |
+| Readout says `performance`; everything soft and blocky | Half resolution, from a level saved by tapping the readout | Tap the readout round to `default`. If the reset in `app.js` stopped working, fix that |
+| Brushstroke or needle-like streaks, but `?webgl` on the same phone is clean | The browser's WebGPU | Keep that browser on WebGL 2: extend `safariEngine` in `app.js` |
+| Streaks with `?webgl` too, and the laptop shows them at the same view | The model | Stage 5, or keep the caps and the walk away from that view |
+| Streaks with `?webgl` too, but the laptop is clean at the same view | Not seen yet | Compare `?budget=1` and the readout's quality levels; record the phone and browser |
+| Old behaviour right after a push | GitHub Pages' cache | Wait 10 minutes and reload |
+| Sharp but under about 30 fps while dragging | The phone is short of power | Tap the readout to `performance` to check; if most phones need it, build with fewer splats (6a) |
+
+### 6f. Put it live
+
+1. Run 6e step 1 on `http://localhost:4173/?config=last-year-v3`, and look
+   at it yourself at 375 × 812, sideways and on a desktop window.
 2. Change `DEFAULT_CONFIG` in `site/app.js` to `'last-year-v3'`.
 3. Commit the scene folder, its `.json` and `app.js`, and push `3D-gsplat`.
    The push publishes to <https://sanketsh4h.github.io/annakut/> within a
    minute or two.
+4. Run 6e step 3 on the live site, and step 1 again against it:
+   `node scripts/device-check.mjs https://sanketsh4h.github.io/annakut/`.
 
 Never commit photos, their JPEG copies, or any `.ply`.
 
@@ -537,3 +631,6 @@ Never commit photos, their JPEG copies, or any `.ply`.
   the 2025 display's centre.
 - The whole chain has been run once, on one set of 15 photos. It has not been
   run on a full capture of several hundred photos.
+- `scripts/device-check.mjs` (6e) was written on 2026-11-21 and has been run
+  on the 2025 model only, locally and on the live site. Safari's WebGPU
+  streaks were seen on one iPhone; why they happen was not found.

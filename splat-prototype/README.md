@@ -101,6 +101,8 @@ scripts/
   serve.mjs           local static server
   vendor.mjs          refreshes site/vendor after a package upgrade
   build-scene.sh      turns one trained splat into site/scene
+  device-check.mjs    checks a phone and a laptop get the same quality
+                      (PIPELINE.md, 6e); needs Playwright
 scan-pipeline/        reference copy of the gpu machine's scan scripts
   refine/             the scripts that made the live model: depth targets,
                       training with a depth loss, clean-up, levelling, crop
