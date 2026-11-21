@@ -17,6 +17,10 @@ Then, on the Mac, copy `$S/gsplat/ply/point_cloud_29999.ply` over and build the
 web scene with the `rotate` angles that `scene_frame.py` printed (see the
 prototype's README, "Swapping in the real scan").
 
+For frames taken from a video (`video_to_frames.py`, run on the Mac; see
+`PIPELINE.md`, stage 1b), use `MATCHER=sequential bash pipeline/01-poses.sh $S`.
+It also reads `$S/groups/*.txt` (one camera per file) and `$S/extra-pairs.txt`.
+
 The scripts run at low priority (`renice 15`), because the machine is shared.
 COLMAP still uses every CPU thread that is free; `THREADS=4 bash pipeline/01-poses.sh $S`
 caps it (slower, but leaves half the CPU alone).

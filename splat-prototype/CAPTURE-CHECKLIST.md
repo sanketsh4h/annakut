@@ -108,6 +108,120 @@ front and wrap fully around both ends.
       information card. These do not go into the 3D scan, so any angle or
       orientation is fine.
 
+## Shooting on video instead
+
+Added 2026-11-21. A slow walk on video, plus about a dozen still photos, can
+replace the 450-650 stills. `scan-pipeline/video_to_frames.py` picks the
+sharpest frames and prepares the stills (`PIPELINE.md`, stage 1b). **This
+route has not been run on a real video yet. Shoot the home rehearsal both
+ways and compare before relying on it.** Everything under "Prepare the
+display" still applies, and so do the passes in the table above: video makes
+them faster, it does not replace them.
+
+### iPhone 17 Pro settings for the video
+
+Menu names are from Apple's iPhone User Guide for iOS 26. They were not
+checked on a phone.
+
+In **Settings > Camera**:
+
+| Setting | Set to | Why |
+| --- | --- | --- |
+| Record Video | 4K at 60 fps | 60 fps keeps each frame's exposure short, which is less blur |
+| Record Video > HDR Video | off | HDR frames come out flat and washed out; the script stops on them |
+| Record Video > Auto FPS | off | Otherwise it drops to 30 or 24 fps in dim light, with a longer, blurrier exposure |
+| Record Video > Enhanced Stabilization | off | It crops and warps every frame differently |
+| Record Video > Lock Camera | on | No switching to another lens while recording |
+| Record Video > Lock White Balance | on | Colour stays the same through a clip |
+| Formats | High Efficiency; Apple ProRes off | ProRes files are huge, and Apple Log looks flat |
+| Macro Control | on | Shows the macro button in the Camera app, so it can be turned off there |
+| Preserve Settings | Macro Control, Exposure Adjustment on | The choices below survive closing the app |
+
+In the **Camera app**, before each clip:
+
+- [ ] Video mode, **1x**, landscape. Hold the phone the same way up all day.
+- [ ] Action mode off. Torch off.
+- [ ] If the macro button (a flower) shows, tap it so it is off.
+- [ ] Stand where the pass starts and aim at the middle of the display. Touch
+      and hold the screen until **AE/AF Lock** shows. This fixes exposure and
+      focus for the clip.
+- [ ] If bright dishes or metal look washed out, drag the sun slider down a
+      little.
+- [ ] Record **one clip per pass** (far, middle, near, each height). Focus is
+      locked at the distance where the clip started, so a clip that changes
+      distance goes soft.
+
+Apple's Camera app has no switch for its ordinary video stabilisation and no
+shutter setting. If the rehearsal shows blur or frames that do not line up,
+use a manual camera app (Blackmagic Camera is free): fix the shutter at 1/120
+s or faster, fix ISO and white balance, turn stabilisation off, leave
+autofocus on, and record 4K HEVC in the ordinary (Rec. 709) colour mode, not
+Log or HDR. Its menus were not checked for this guide.
+
+### How to walk
+
+- [ ] **Slowly: about half a foot per second.** One pass along the 21 ft
+      front takes over a minute. Faster than that blurs in hall lighting.
+- [ ] Step, pause for a moment, step. The script keeps the sharpest frame of
+      each stretch, and those come from the pauses.
+- [ ] Sidestep, do not pivot on the spot, and aim at the display.
+- [ ] Wrap round both ends, and do the high pass looking down at about 45
+      degrees. Those are the views last year's model lacked.
+- [ ] Walk in to each hotspot item slowly as part of a clip; no sudden moves.
+- [ ] About 10 minutes of video in all is plenty (about 4.5 GB at 4K 60).
+
+### The still photos
+
+About 12 ordinary photos give the pipeline the direction of "down" (the
+phone stores it in every photo, not in video). Take them in the same
+session, spread along the passes, each with the phone held still.
+
+In **Settings > Camera**:
+
+| Setting | Set to | Why |
+| --- | --- | --- |
+| Formats | High Efficiency or Most Compatible | The script reads both |
+| Formats > Photo Mode | 24 MP (12 MP is enough) | |
+| Formats > ProRAW & Resolution Control | off | |
+| Main Camera (or Fusion Camera) > Default Lens | 1x (24 mm) | One lens setting for all the stills |
+| Preserve Settings | Live Photo, Night Mode on | Keeps both turned off once you turn them off |
+
+In the **Camera app**:
+
+- [ ] Photo mode, **1x** (not 1.2x or 1.5x), **landscape**. Upright stills
+      are left out.
+- [ ] Live Photo off. Flash off. Photographic Style: Standard.
+- [ ] Night mode off: if its button turns yellow, tap it and slide to Off.
+- [ ] No Portrait mode, no zooming.
+- [ ] Each still should show a good part of the display, like a frame of the
+      video would.
+
+Copy the videos and stills to the Mac by cable (Image Capture or Photos) or
+AirDrop. Messaging apps recompress the video and strip the data the
+pipeline needs from the photos.
+
+### Check the video before you leave
+
+1. Blur and pace, about as long as the video itself:
+
+   ```bash
+   python3 scan-pipeline/video_to_frames.py /tmp/none VIDEO1.MOV VIDEO2.MOV --dry-run
+   ```
+
+   It lists `soft` stretches (blurred) and `fast` stretches (the picture
+   jumped) by time in each video. Reshoot those stretches as a new clip.
+
+2. Coverage: make a small set, shrink it, and run the same check as "Before
+   you leave" below, from its step 2, with `MATCHER=sequential` in front of
+   `bash`:
+
+   ```bash
+   python3 scan-pipeline/video_to_frames.py check VIDEO1.MOV VIDEO2.MOV --stills STILLS_FOLDER --count 200 && sips -Z 1600 check/images/*.jpg >/dev/null
+   ```
+
+   Send the whole `check/` folder, not only its images (`rsync -a check/
+   gpu:sshah_workspace/projects/annakut-check/`).
+
 ## Before you leave
 
 A fast coverage check on every third photo, shrunk. It answers one question:

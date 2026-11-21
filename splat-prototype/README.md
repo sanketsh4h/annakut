@@ -104,6 +104,8 @@ scripts/
   device-check.mjs    checks a phone and a laptop get the same quality
                       (PIPELINE.md, 6e); needs Playwright
 scan-pipeline/        reference copy of the gpu machine's scan scripts
+  video_to_frames.py  runs on the Mac: a walk-round video plus a few stills
+                      becomes the photo set (PIPELINE.md, 1b)
   refine/             the scripts that made the live model: depth targets,
                       training with a depth loss, clean-up, levelling, crop
 PIPELINE.md           the whole method, photos to the live view, step by step
@@ -186,7 +188,8 @@ same thin, faint splats as the streaks round it, so `--keep-box` exempts it.
 
 ## Making a scene from a new scan
 
-Shoot the photos by `CAPTURE-CHECKLIST.md` first.
+Shoot the photos by `CAPTURE-CHECKLIST.md` first. It also covers shooting a
+video in place of most of the photos (`PIPELINE.md`, stage 1b).
 
 `PIPELINE.md` is the full method that made the live model (depth targets,
 training, clean-up, levelling, the crop to the display), followed by the

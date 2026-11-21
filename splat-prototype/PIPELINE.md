@@ -30,6 +30,7 @@ bad; only more photos fix that (stage 1).
 
 | What | Where |
 | --- | --- |
+| Video to photo set (stage 1b) | `scan-pipeline/video_to_frames.py` |
 | Scripts for stages 2 to 5, as they were run | `scan-pipeline/refine/` (this repo) |
 | Pose and plain-training scripts, power log | `scan-pipeline/` |
 | Scene build script | `scripts/build-scene.sh` |
@@ -88,6 +89,57 @@ python3 scan-pipeline/refine/gravity.py images/*.jpg | python3 -c "import sys, j
 
 Copy `images/` and `gravity.json` to `$S` on the gpu machine.
 
+### 1b. From a video instead
+
+Added 2026-11-21. One or more videos of a slow walk, plus about a dozen
+still photos, in place of several hundred stills. Shoot by
+`CAPTURE-CHECKLIST.md`, "Shooting on video instead". On the Mac (it needs
+ffmpeg: `brew install ffmpeg`):
+
+```bash
+python3 scan-pipeline/video_to_frames.py scan-set pass-a.MOV pass-b.MOV pass-c.MOV --stills stills/
+```
+
+Name the videos in the order they were shot. `--stills` takes folders or
+files, HEIC or JPEG. It writes a folder that is copied whole to `$S`:
+
+| It writes | What it is |
+| --- | --- |
+| `images/v01_000123.jpg` ... | The frames it kept, full size, named in shooting order |
+| `images/still_IMG_1234.jpg` ... | Each still, cropped and resized to the video's shape, so every image has one size |
+| `groups/*.txt` | Which images share a camera: the video frames, and the stills by lens setting. Stage 2 reads these |
+| `extra-pairs.txt` | Each still paired with every other image, for stage 2's sequential matching |
+| `gravity.json` | Gravity per still, as stage 5 expects it |
+| `frames.csv` | Every frame it looked at: time, sharpness, movement, kept or not |
+
+How it picks frames. It scores 10 frames a second for sharpness, and measures
+how far the picture moved between them. Each video is cut into stretches of
+equal movement, not equal time, and the sharpest frame of each stretch is
+kept. Standing still adds nothing; a pause in the walk gives a sharp frame.
+
+| Option | Default | What it does |
+| --- | --- | --- |
+| `--count` | 600 | Frames to keep across all videos. It prints how much of the picture neighbouring frames share; aim for 85% or more |
+| `--min-step` | 0.02 | Never keep frames closer than this share of the frame width. A short video gives fewer than `--count` |
+| `--camera-per-clip` | off | Give each video its own camera. Use it if lens or zoom differed between videos |
+| `--hdr keep` | stop | An HDR video stops the script, because its frames come out flat. This goes on anyway |
+| `--dry-run` | off | Score and report only. The on-site check |
+
+Read what it prints. `soft` lists stretches where even the best frame is
+blurred next to its neighbours, and `fast` lists places where the picture
+jumped between kept frames. Both are given as times in the video, so that
+stretch can be shot again.
+
+The stills carry the gravity data, which video does not have. An upright
+still is left out. A still with the phone held the other way up is turned
+upright and its gravity vector is turned with it. Without at least three
+stills, level with `scan-pipeline/scene_frame.py` instead of stage 5's
+`level.py`.
+
+```bash
+rsync -a scan-set/ gpu:sshah_workspace/projects/<scan>/
+```
+
 ## 2. Camera positions
 
 One camera, one zoom setting, all photos the same shape:
@@ -119,6 +171,29 @@ colmap mapper --database_path $S/colmap.db --image_path $S/images --output_path 
 The script that did this for the 2025 photos is on the gpu machine only
 (`~/sshah_workspace/projects/annakut-2025/poses-baseline.sh`). The commands
 above are written from its description, not copied from it.
+
+**Frames from a video (stage 1b).** Add `MATCHER=sequential`:
+
+```bash
+MATCHER=sequential bash ~/sshah_workspace/projects/pipeline/01-poses.sh $S
+```
+
+The default compares every photo with every other, which grows with the
+square of the count. Sequential matching compares each frame with the 20
+after it in name order (`OVERLAP=20`), looks for places the walk came back to
+(loop detection, with a vocabulary file COLMAP downloads once), and then
+matches every pair in `$S/extra-pairs.txt`, which ties each still to all the
+frames. The script also reads `$S/groups/*.txt` and gives each group its own
+camera, which is the per-lens procedure above done for you. Any scan can use
+`groups/`; every photo must be named in exactly one file.
+
+Tested 2026-11-21 on the 128-photo South Building sample, split into a
+"video" group of 108 and a "stills" group of 20 with extra pairs: 128 of 128
+cameras matched the reference (largest position error 0.02% of the camera
+path), and both groups came out with the same focal length, as they should
+for one real camera. It matched 2,329 pairs where the default matches 8,128.
+That sample is photos, not video frames, and too small to show the time
+saved.
 
 Check before going on: `colmap model_analyzer --path $S/sparse/0` should list
 every photo as registered, and a quick Brush splat
@@ -637,6 +712,14 @@ Never commit photos, their JPEG copies, or any `.ply`.
   the 2025 display's centre.
 - The whole chain has been run once, on one set of 15 photos. It has not been
   run on a full capture of several hundred photos.
+- The video route (stage 1b and `MATCHER=sequential`) was written on
+  2026-11-21 and has not been run on a real video. `video_to_frames.py` was
+  tested on a made-up video with known movement, pauses and blur: it measured
+  the movement to within 4%, kept the sharp frames, and flagged the blurred
+  stretch. Not tested: a real iPhone file, whether video frames give as good
+  a model as stills, and a still taken with the phone the other way up (the
+  arithmetic was checked, not a photo). The home rehearsal should shoot the
+  same table both ways and compare held-back scores (stage 4).
 - `scripts/device-check.mjs` (6e) was written on 2026-11-21 and has been run
   on the 2025 model only, locally and on the live site. Safari's WebGPU
   streaks were seen on one iPhone; why they happen was not found.
