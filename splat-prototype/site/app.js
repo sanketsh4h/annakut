@@ -387,6 +387,13 @@ async function main() {
     if (params.has('budget')) options.budget = Number(params.get('budget'));
     if (params.has('stats')) options.ministats = true;
 
+    // On phones the viewer starts at its "performance" quality, which draws
+    // the scene at half resolution and makes this scan look blocky and noisy.
+    // Start every device at "default" (full resolution) instead. The viewer
+    // keeps a visitor's own choice (tapping the readout) under the same key,
+    // so a choice already made is left alone.
+    if (store.get('quality') === null) store.set('quality', 'default');
+
     const viewer = await createViewer(options);
     const app = viewer.app;
 

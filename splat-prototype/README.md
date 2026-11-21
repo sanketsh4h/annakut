@@ -48,6 +48,13 @@ quality level the viewer chose for the device, the frame rate while the scene
 is moving, and how long the first view took. Tap it to step through quality
 levels.
 
+Every device starts at the viewer's `default` quality. Left to itself the
+viewer starts phones at `performance`, which draws at half resolution and
+made the scan look blocky and noisy on phones. `app.js` overrides that unless
+the visitor has already picked a level by tapping the readout. The viewer
+saves that choice in the browser, so it sticks until it is changed. If a
+phone runs too slowly, tapping round to `performance` is the way back.
+
 ### Test switches
 
 Add these to the address, for example `http://localhost:4173/?webgl&stats`.
