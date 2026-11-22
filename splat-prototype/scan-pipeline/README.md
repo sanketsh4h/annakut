@@ -21,6 +21,18 @@ For frames taken from a video (`video_to_frames.py`, run on the Mac; see
 `PIPELINE.md`, stage 1b), use `MATCHER=sequential bash pipeline/01-poses.sh $S`.
 It also reads `$S/groups/*.txt` (one camera per file) and `$S/extra-pairs.txt`.
 
+If the photos split into several models, `01-poses.sh` puts the one holding
+the most photos at `sparse/0` and prints `placed: N of M photos`.
+
+A small object filmed all the way round is one command, `bash pipeline/object.sh $S`
+(poses, training and crop; `PIPELINE.md`, "Small objects: the short route").
+
+Also here, all described in `PIPELINE.md`: `depth-targets.sh $S` (stage 3,
+depth targets for the trainer, in one command), `spacing_study.sh $S` (how
+far apart frames can be before quality or the poses give way; stage 1b), and
+`refine/crop_object.py` (stage 5d: crop a small object's splat to the object
+and stand it upright, with nothing typed in).
+
 The scripts run at low priority (`renice 15`), because the machine is shared.
 COLMAP still uses every CPU thread that is free; `THREADS=4 bash pipeline/01-poses.sh $S`
 caps it (slower, but leaves half the CPU alone).

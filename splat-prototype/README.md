@@ -101,13 +101,22 @@ scripts/
   serve.mjs           local static server
   vendor.mjs          refreshes site/vendor after a package upgrade
   build-scene.sh      turns one trained splat into site/scene
+  object-scene.sh     a small object's model from the gpu machine to a
+                      page on the local site (PIPELINE.md, short route)
   device-check.mjs    checks a phone and a laptop get the same quality
                       (PIPELINE.md, 6e); needs Playwright
 scan-pipeline/        reference copy of the gpu machine's scan scripts
   video_to_frames.py  runs on the Mac: a walk-round video plus a few stills
                       becomes the photo set (PIPELINE.md, 1b)
+  object.sh           a small object in one command: camera positions,
+                      training, crop (PIPELINE.md, short route)
+  depth-targets.sh    depth targets for the trainer in one command (3)
+  spacing_study.sh    how far apart frames can be: the test behind the
+                      frame caps (1b)
   refine/             the scripts that made the live model: depth targets,
-                      training with a depth loss, clean-up, levelling, crop
+                      training with a depth loss, clean-up, levelling, and
+                      the crops for the display (crop_hull.py, 5c) and for a
+                      small object (crop_object.py, 5d)
 PIPELINE.md           the whole method, photos to the live view, step by step
 ```
 

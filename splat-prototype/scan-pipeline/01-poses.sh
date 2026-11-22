@@ -4,7 +4,8 @@
 #   bash ~/sshah_workspace/projects/pipeline/01-poses.sh <scan-dir>
 #
 # <scan-dir>/images/ holds the photos. Writes <scan-dir>/colmap.db and
-# <scan-dir>/sparse/0/, and prints how many photos were placed. Also logs the
+# <scan-dir>/sparse/0/ (the largest model, if the photos split into several),
+# and prints how many photos were placed. Also logs the
 # machine's power draw to <scan-dir>/logs/power-poses-<time>.csv.
 #
 # Cameras: by default every photo is taken to come from one camera at one zoom
@@ -107,6 +108,22 @@ lap "mapping ($MAPPER)"
 power_stop
 
 echo "### result"
-n=$(find "$S/sparse" -mindepth 1 -maxdepth 1 -type d | wc -l)
-echo "separate models: $n   (more than 1 means the photos did not all connect; sparse/0 is used)"
+# COLMAP numbers the models in the order it started them, so sparse/0 can be a
+# stray pair of photos. Put the model holding the most photos at sparse/0.
+placed() { colmap model_analyzer --path "$1" 2>&1 | grep -a "Registered images" | grep -oE "[0-9]+$" || true; }
+n=0; best=""; most=0
+for m in "$S/sparse"/*/; do
+    [ -d "$m" ] || continue
+    n=$((n + 1)); c=$(placed "$m"); c=${c:-0}
+    echo "model $(basename "$m"): $c photos"
+    if [ "$c" -gt "$most" ]; then most=$c; best=$(basename "$m"); fi
+done
+[ "$n" -gt 0 ] || { echo "no model: the photos did not connect at all (see $S/logs/3-mapper.log)"; exit 1; }
+if [ "$best" != 0 ]; then
+    mv "$S/sparse/0" "$S/sparse/swap"; mv "$S/sparse/$best" "$S/sparse/0"; mv "$S/sparse/swap" "$S/sparse/$best"
+    echo "the largest model was sparse/$best; it is now sparse/0"
+fi
+total=$(find "$S/images" -maxdepth 1 \( -type f -o -type l \) | wc -l)
+echo "separate models: $n   (more than 1 means the photos did not all connect)"
+echo "placed: $most of $total photos, in sparse/0"
 colmap model_analyzer --path "$S/sparse/0" 2>&1 | grep -E "Cameras|Images|Registered|Points|Mean (track|observations|reprojection)" | sed -E 's/^.*\] //'

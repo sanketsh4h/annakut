@@ -51,6 +51,13 @@ DEADBAND = 0.0006    # movement per frame pair below this (0.2 px of THUMB_W) co
 MAX_PAIR = 0.25      # movement per frame pair is capped at this share of the width
 SOFT_RATIO = 0.5     # a kept frame under this share of its neighbours' sharpness is "soft"
 FAST_GAP = 0.30      # kept frames further apart than this share of the width: "fast"
+# How many frames are enough, by kind of subject: keep one frame per `step` of
+# movement (a share of the frame width), and never more than `cap` in all. The
+# numbers and where they come from are in PIPELINE.md, stage 1b.
+SUBJECTS = {
+    "display": dict(step=0.10, cap=450),   # from the geometry of an 18 x 12 ft display; not yet tested on a display video
+    "object": dict(step=0.045, cap=270),   # measured: spacing study on the chair video, 2026-11-21 (about 4 degrees; three rings)
+}
 HDR_TRANSFERS = {"arib-std-b67": "HLG", "smpte2084": "PQ"}
 
 
@@ -210,17 +217,17 @@ def analyse(clip, afps, score_w):
                 checks=np.stack(checks), unsure=unsure, afps=afps, seconds=time.time() - t0)
 
 
-def choose(clips, count, min_step):
-    """Per clip: equal-movement stretches, sharpest frame of each."""
+def choose(clips, target, cap):
+    """Per clip: equal-movement stretches, sharpest frame of each.
+
+    One stretch per `target` of movement, widened if that would pass `cap` frames."""
     total = sum(float(c["travel"][-1]) for c in clips)
     if total <= 0:
         for c in clips:
             c["picks"] = np.array([int(np.argmax(c["sharp"]))])
         return 0.0, True
-    step = total / count
-    limited = step < min_step
-    if limited:
-        step = min_step
+    step = max(target, total / cap)
+    capped = step > target
     for c in clips:
         length = float(c["travel"][-1])
         n = max(1, int(round(length / step)))
@@ -230,7 +237,7 @@ def choose(clips, count, min_step):
             idx = np.flatnonzero(bins == b)
             picks.append(int(idx[np.argmax(c["sharp"][idx])]))
         c["picks"] = np.array(sorted(picks))
-    return step, limited
+    return step, capped
 
 
 def stretches(times, gap):
@@ -258,27 +265,32 @@ def judge(clip):
     clip["still_s"] = float((clip["pair"][1:] == 0).sum()) / clip["afps"]
 
 
+def any_of(terms):
+    """a+b+c+... as a balanced tree. ffmpeg refuses a plain chain of more than 100 terms."""
+    if len(terms) == 1:
+        return terms[0]
+    mid = len(terms) // 2
+    return f"({any_of(terms[:mid])}+{any_of(terms[mid:])})"
+
+
 def extract(clip, tag, out_images):
     """Second pass: write the chosen frames at full size."""
     picks = [int(n) for n in clip["picks"]]
-    vf = f"fps={clip['afps']:g},select='" + "+".join(f"eq(n,{n})" for n in picks) + "',scale=out_range=pc:out_color_matrix=bt601"
+    vf = (f"fps={clip['afps']:g},select='" + any_of([f"eq(n,{n})" for n in picks])
+          + "',scale=out_range=pc:out_color_matrix=bt601")
     tmp = tempfile.mkdtemp(prefix="v2f-", dir=os.path.dirname(out_images))
     try:
-        err = ""
+        err, got = "", []
         for accel in ([hwaccel(), []] if hwaccel() else [[]]):
-            for sync in (["-fps_mode", "passthrough"], ["-vsync", "0"]):
-                r = subprocess.run([tool("ffmpeg"), "-v", "error", "-nostdin", *accel, "-i", clip["path"],
-                                    "-an", "-sn", "-vf", vf, *sync, "-q:v", "2",
-                                    os.path.join(tmp, "%06d.jpg")], capture_output=True, text=True)
-                err = r.stderr
-                got = sorted(os.listdir(tmp))
-                if r.returncode == 0 and len(got) == len(picks):
-                    break
-                for f in got:
-                    os.remove(os.path.join(tmp, f))
-                got = []
-            if got:
+            r = subprocess.run([tool("ffmpeg"), "-v", "error", "-nostdin", *accel, "-i", clip["path"],
+                                "-an", "-sn", "-vf", vf, "-fps_mode", "passthrough", "-q:v", "2",
+                                os.path.join(tmp, "%06d.jpg")], capture_output=True, text=True)
+            err = err or r.stderr
+            got = sorted(os.listdir(tmp))
+            if r.returncode == 0 and len(got) == len(picks):
                 break
+            for f in got:
+                os.remove(os.path.join(tmp, f))
         if len(got) != len(picks):
             die(f"expected {len(picks)} frames from {clip['name']}, ffmpeg wrote {len(got)}:\n{err[-2000:]}")
         names = []
@@ -387,15 +399,19 @@ def main():
     ap.add_argument("videos", nargs="+", help="video files, in the order they were shot")
     ap.add_argument("--stills", nargs="+", default=[], metavar="PATH",
                     help="still photos (files or folders) taken in the same session, for gravity")
-    ap.add_argument("--count", type=int, default=600, help="frames to keep across all videos (default 600)")
-    ap.add_argument("--min-step", type=float, default=0.02,
-                    help="never keep frames closer than this share of the frame width (default 0.02)")
+    ap.add_argument("--subject", choices=sorted(SUBJECTS), default="display",
+                    help="what was filmed: 'display' (a large set-up seen from the front) or 'object' "
+                         "(a small thing walked all the way round). Sets the spacing and the cap")
+    ap.add_argument("--step", type=float,
+                    help="keep one frame per this share of the frame width of movement (overrides --subject)")
+    ap.add_argument("--max", type=int, dest="cap",
+                    help="never keep more than this many frames in all (overrides --subject)")
     ap.add_argument("--analysis-fps", type=float, default=10, help="frames per second to score (default 10)")
     ap.add_argument("--score-width", type=int, default=1920, help="width frames are scored at (default 1920)")
     ap.add_argument("--camera-per-clip", action="store_true",
                     help="give each video its own camera (use when lens or zoom differs between videos)")
     ap.add_argument("--hdr", choices=["stop", "keep"], default="stop",
-                    help="what to do with an HDR video: stop (default), or keep its flat colours")
+                    help="what to do with an HDR video: stop (default), or keep its duller colours")
     ap.add_argument("--dry-run", action="store_true", help="analyse and report only; write no images")
     a = ap.parse_args()
 
@@ -410,12 +426,18 @@ def main():
             + "). The pipeline needs one shape for the whole scan.")
     w, h = shapes.pop()
     if w < h:
-        die(f"{clips[0]['name']} is upright ({w}x{h}). Shoot in landscape.")
+        # Upright frames reconstruct fine. The stills cannot follow: a landscape still
+        # cropped to an upright shape keeps too little, and upright stills are not read.
+        if a.stills:
+            die(f"{clips[0]['name']} is upright ({w}x{h}). Stills only work with landscape video: "
+                "shoot in landscape, or leave --stills out and level with scene_frame.py.")
+        print(f"NOTE: {clips[0]['name']} is upright ({w}x{h}). Fine for a small object; "
+              "shoot a wide display in landscape.")
     for c in clips:
         if c["hdr"] and a.hdr == "stop":
-            die(f"{c['name']} is HDR ({c['hdr']}). Its frames come out with flat, washed-out colours.\n"
+            die(f"{c['name']} is HDR ({c['hdr']}). Its frames come out with duller colours than the phone shows.\n"
                 "  Best: record again with HDR video off (iPhone: Settings > Camera > Record Video).\n"
-                "  Or pass --hdr keep to go on with the flat colours.")
+                "  Or pass --hdr keep to go on with them as they are.")
     stills = list_stills(a.stills)
 
     for i, c in enumerate(clips, 1):
@@ -425,7 +447,9 @@ def main():
         analyse(c, afps, a.score_width)
         print(f"    scored {len(c['sharp'])} frames in {c['seconds']:.0f} s", flush=True)
 
-    step, limited = choose(clips, a.count, a.min_step)
+    target = a.step or SUBJECTS[a.subject]["step"]
+    cap = a.cap or SUBJECTS[a.subject]["cap"]
+    step, capped = choose(clips, target, cap)
     kept = sum(len(c["picks"]) for c in clips)
     print()
     if step == 0:
@@ -433,12 +457,12 @@ def main():
     else:
         print(f"keeping {kept} frames; neighbours share about {max(0, 1 - step):.0%} of the picture "
               f"(one frame every {step:.1%} of the frame width)")
-        if limited:
-            print(f"  fewer than the {a.count} asked for: the videos hold only this much movement "
-                  f"at the closest spacing allowed (--min-step {a.min_step:g})")
-        if step > 0.2:
-            print(f"  WARNING: that is sparse. Raise --count to about {int(kept * step / 0.14)} "
-                  "so neighbours share 85% or more.")
+        if capped:
+            print(f"  the cap of {cap} frames set that spacing; the target for --subject {a.subject} "
+                  f"is {target:.0%}")
+            if step > 2 * target:
+                print(f"  WARNING: that is more than twice the target. There is more video here than {cap} "
+                      "frames cover well: shoot less, or raise --max and accept the extra compute.")
     for i, c in enumerate(clips, 1):
         judge(c)
         t = c["picks"] / c["afps"]
@@ -510,12 +534,18 @@ def main():
     print(f"cameras: {', '.join(f'{k} ({len(v)})' for k, v in groups.items())}")
     if len(gravity) >= 3:
         print(f"gravity: {len(gravity)} stills -> gravity.json")
+    elif a.subject == "object":
+        print("no stills, and none needed: the object crop finds 'up' from the surface the object stands on.")
     else:
         print(f"WARNING: gravity from only {len(gravity)} stills. refine/level.py needs several that agree; "
               "without them, level with scan-pipeline/scene_frame.py (assumes the camera was held level).")
-    print(f"\nnext:  rsync -a {a.out.rstrip('/')}/ gpu:sshah_workspace/projects/<scan>/\n"
-          "       ssh gpu 'MATCHER=sequential bash ~/sshah_workspace/projects/pipeline/01-poses.sh "
-          "~/sshah_workspace/projects/<scan>'")
+    print(f"\nnext:  rsync -a {a.out.rstrip('/')}/ gpu:sshah_workspace/projects/<scan>/")
+    if a.subject == "object":
+        print("       ssh gpu 'bash ~/sshah_workspace/projects/pipeline/object.sh ~/sshah_workspace/projects/<scan>'\n"
+              "       sh scripts/object-scene.sh <name> <scan>")
+    else:
+        print("       ssh gpu 'MATCHER=sequential bash ~/sshah_workspace/projects/pipeline/01-poses.sh "
+              "~/sshah_workspace/projects/<scan>'")
 
 
 if __name__ == "__main__":

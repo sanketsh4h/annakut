@@ -9,6 +9,11 @@
 #
 #   ROTATE=179.4,-36.2,170.8 sh scripts/build-scene.sh scan.ply site/scene
 #
+# TRANSLATE moves it afterwards, to put the floor at y = 0 and the middle at
+# the origin. The small-object crop (refine/crop_object.py) prints both:
+#
+#   ROTATE=... TRANSLATE=-0.08,0.28,0.09 sh scripts/build-scene.sh object.ply site/scene-x
+#
 # The viewer downloads the lowest-detail level first and refines from there,
 # within a splat budget it picks for the device.
 set -eu
@@ -23,7 +28,7 @@ rm -rf "$OUT"
 mkdir -p "$OUT"
 
 # The bundling step only accepts local .ply files, so normalise the input first.
-"$ST" -q -w "$IN" ${ROTATE:+-r "$ROTATE"} "$TMP/lod0.ply"
+"$ST" -q -w "$IN" ${ROTATE:+-r "$ROTATE"} ${TRANSLATE:+-t "$TRANSLATE"} "$TMP/lod0.ply"
 
 # Lower-detail copies. Decimation has to be the last action and write a .ply.
 "$ST" -q -w "$TMP/lod0.ply" -d 50% "$TMP/lod1.ply"

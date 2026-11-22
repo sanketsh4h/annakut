@@ -13,7 +13,7 @@ CAP="${2:-2000000}"; FACTOR="${3:-2}"; STEPS="${4:-30000}"
 [ -d "$S/sparse/0" ] || { echo "no sparse/0 in $S, run 01-poses.sh first"; exit 1; }
 set +u; source "$HOME/sshah_workspace/env/activate.sh"; set -u
 # This machine is shared: give way to everyone else's work.
-renice -n 15 -p $$ > /dev/null; ionice -c 3 -p $$ 2> /dev/null || true
+renice -n 15 -p $$ > /dev/null 2>&1 || true; ionice -c 3 -p $$ 2> /dev/null || true
 mkdir -p "$S/logs"
 # The trainer insists on an images_<N> folder and then makes its own
 # downscaled copies in images_<N>_png; a link to the originals satisfies it.

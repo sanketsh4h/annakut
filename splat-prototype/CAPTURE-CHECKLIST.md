@@ -113,8 +113,9 @@ front and wrap fully around both ends.
 Added 2026-11-21. A slow walk on video, plus about a dozen still photos, can
 replace the 450-650 stills. `scan-pipeline/video_to_frames.py` picks the
 sharpest frames and prepares the stills (`PIPELINE.md`, stage 1b). **This
-route has not been run on a real video yet. Shoot the home rehearsal both
-ways and compare before relying on it.** Everything under "Prepare the
+route has been run once on a real video, of a chair (2026-11-21), and not
+yet on a display. Shoot the home rehearsal both ways and compare before
+relying on it.** Everything under "Prepare the
 display" still applies, and so do the passes in the table above: video makes
 them faster, it does not replace them.
 
@@ -128,7 +129,7 @@ In **Settings > Camera**:
 | Setting | Set to | Why |
 | --- | --- | --- |
 | Record Video | 4K at 60 fps | 60 fps keeps each frame's exposure short, which is less blur |
-| Record Video > HDR Video | off | HDR frames come out flat and washed out; the script stops on them |
+| Record Video > HDR Video | off | HDR frames come out with duller colours than the phone shows; the script stops on them unless told to go on |
 | Record Video > Auto FPS | off | Otherwise it drops to 30 or 24 fps in dim light, with a longer, blurrier exposure |
 | Record Video > Enhanced Stabilization | off | It crops and warps every frame differently |
 | Record Video > Lock Camera | on | No switching to another lens while recording |
@@ -200,6 +201,40 @@ Copy the videos and stills to the Mac by cable (Image Capture or Photos) or
 AirDrop. Messaging apps recompress the video and strip the data the
 pipeline needs from the photos.
 
+### A small object (about 1 ft), all the way round
+
+For a single item shown on its own, with a full 360° view. The settings
+above apply. What differs, learned from the chair test:
+
+- [ ] Stand the object on a matte surface with a pattern (a printed cloth,
+      newspaper). A plain floor came out patchy, and the pattern is also what
+      lets the frames connect. Nothing shiny underneath.
+- [ ] Do not turn the object, and no turntable. Walk round it; the room has
+      to stay still behind it.
+- [ ] Keep people out of the background. Anyone who moves becomes a ghost.
+- [ ] Fill most of the frame with the object, about two object-widths away.
+      Touch and hold on the object for **AE/AF Lock**.
+- [ ] **Three rings**, one clip each: nearly level with the object, looking
+      down at about 40°, and looking down at about 65°. The chair had one
+      ring from above, so its seat was paper-thin from the side and nothing
+      under it was seen.
+- [ ] **45 seconds or more per ring.** The chair's ring took 11 seconds and
+      every frame was blurred.
+- [ ] Carry each ring on past where it started, by a good step. The chair's
+      ring stopped 50° short, and that wedge is a hole in the model.
+- [ ] No stills are needed: the crop finds "down" from the surface the
+      object stands on. Upright video is fine.
+
+Three rings of 45 seconds give about 270 frames, which is the script's cap
+for `--subject object`:
+
+```bash
+python3 scan-pipeline/video_to_frames.py scan-set ring-low.MOV ring-mid.MOV ring-high.MOV --subject object
+```
+
+From there it is two more commands to a page on the site: `PIPELINE.md`,
+"Small objects: the short route".
+
 ### Check the video before you leave
 
 1. Blur and pace, about as long as the video itself:
@@ -216,7 +251,7 @@ pipeline needs from the photos.
    `bash`:
 
    ```bash
-   python3 scan-pipeline/video_to_frames.py check VIDEO1.MOV VIDEO2.MOV --stills STILLS_FOLDER --count 200 && sips -Z 1600 check/images/*.jpg >/dev/null
+   python3 scan-pipeline/video_to_frames.py check VIDEO1.MOV VIDEO2.MOV --stills STILLS_FOLDER --max 200 && sips -Z 1600 check/images/*.jpg >/dev/null
    ```
 
    Send the whole `check/` folder, not only its images (`rsync -a check/

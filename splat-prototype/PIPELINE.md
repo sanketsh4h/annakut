@@ -33,6 +33,10 @@ bad; only more photos fix that (stage 1).
 | Video to photo set (stage 1b) | `scan-pipeline/video_to_frames.py` |
 | Scripts for stages 2 to 5, as they were run | `scan-pipeline/refine/` (this repo) |
 | Pose and plain-training scripts, power log | `scan-pipeline/` |
+| Depth targets in one command (stage 3) | `scan-pipeline/depth-targets.sh` |
+| How-many-frames test (stage 1b) | `scan-pipeline/spacing_study.sh` |
+| Small object, start to finish | `scan-pipeline/object.sh` (gpu machine), `scripts/object-scene.sh` (Mac) |
+| Crops: display (5c) and small object (5d) | `scan-pipeline/refine/crop_hull.py`, `scan-pipeline/refine/crop_object.py` |
 | Scene build script | `scripts/build-scene.sh` |
 | Viewer, angle caps, rotating view | `site/app.js`, `site/last-year-v2.json` (stage 6b to 6d) |
 | Phone and laptop check | `scripts/device-check.mjs` (stage 6e) |
@@ -58,6 +62,47 @@ Every gpu command needs `source ~/sshah_workspace/env/activate.sh` first. The
 machine is shared, so long jobs ran under `taskset -c 0-3 nice -n 19` with 2
 threads. gsplat runs on the TITAN V only (`CUDA_VISIBLE_DEVICES=0`); COLMAP's
 dense stereo ran on the GTX 1080 (`gpu_index 1`).
+
+## Small objects: the short route
+
+For one item about a foot across, filmed all the way round
+(`CAPTURE-CHECKLIST.md`, "A small object"). Three commands; the numbered
+stages below explain each part.
+
+```bash
+# Mac: videos to frames (stage 1b). Add --hdr keep if the phone filmed in HDR.
+python3 scan-pipeline/video_to_frames.py scan-set ring-low.MOV ring-mid.MOV ring-high.MOV --subject object
+rsync -a scan-set/ gpu:sshah_workspace/projects/<scan>/
+
+# gpu machine: camera positions (2), training (4), crop and stand up (5d)
+ssh gpu 'bash ~/sshah_workspace/projects/pipeline/object.sh ~/sshah_workspace/projects/<scan>'
+
+# Mac: fetch the model, build the scene (6a), write site/<name>.json
+sh scripts/object-scene.sh <name> <scan>
+```
+
+Then `npm run serve` and open `http://localhost:4173/?config=<name>`.
+
+| Part | Setting | Why |
+| --- | --- | --- |
+| Frames | one per 4.5% of the frame width, at most 270 | Stage 1b, "How many frames are enough" |
+| Camera positions | sequential matching; stops if under 90% of the frames connect | A model from the part that connected is missing a side. `FORCE=1` goes on anyway |
+| Training | 30,000 steps, up to 500,000 splats, half-size frames, no depth targets | Depth added a false sheet under the test chair's seat (stage 3) |
+| Crop | floor removed, object upright on the origin | Stage 5d |
+| View limits | none | Set by hand in `site/<name>.json` if wanted (6c) |
+
+Run end to end on 2026-11-21 with the chair video (11 seconds, one ring):
+66 frames kept; all 66 placed in 81 s; training 24 minutes; crop 12 s; 25
+minutes on the gpu machine in all. 108,054 of 500,000 splats kept, and the
+scene is 6.4 MB. The chair came out whole, upright and on the origin. What
+was wrong with it was the filming, which the script reported: a 54° wedge
+never filmed, and one ring from above, so the seat's underside is fog.
+
+`object.sh` skips a stage whose result is already there, so a run that
+stopped can be started again; `REDO=1` starts over. It prints what to worry
+about: frames that did not connect, a side that was not filmed, every frame
+taken from one height. The model file lands in `../object-models/<name>/`,
+outside the repo.
 
 ## 1. Photos
 
@@ -119,16 +164,57 @@ kept. Standing still adds nothing; a pause in the walk gives a sharp frame.
 
 | Option | Default | What it does |
 | --- | --- | --- |
-| `--count` | 600 | Frames to keep across all videos. It prints how much of the picture neighbouring frames share; aim for 85% or more |
-| `--min-step` | 0.02 | Never keep frames closer than this share of the frame width. A short video gives fewer than `--count` |
+| `--subject` | `display` | What was filmed: `display` (the large set-up, seen from the front) or `object` (a small thing walked all the way round). Sets the spacing and the cap below |
+| `--step` | by subject | Keep one frame per this share of the frame width of movement |
+| `--max` | by subject | Never keep more than this many frames in all. If the videos are longer than the cap covers at that spacing, the spacing widens and it says so |
 | `--camera-per-clip` | off | Give each video its own camera. Use it if lens or zoom differed between videos |
-| `--hdr keep` | stop | An HDR video stops the script, because its frames come out flat. This goes on anyway |
+| `--hdr keep` | stop | An HDR video stops the script, because its frames come out with duller colours than the phone shows. This goes on anyway |
 | `--dry-run` | off | Score and report only. The on-site check |
+
+**How many frames are enough.** More frames cost time in stage 2 (which
+grows faster than the count) and add nothing once neighbours show almost the
+same picture. So the script keeps frames by spacing, up to a cap:
+
+| `--subject` | Spacing | Cap | Where the numbers come from |
+| --- | --- | --- | --- |
+| `object`: about 1 ft, walked all the way round | 4.5% of the frame width, about 4° round the object | 270 | Measured (below). One ring is about 90 frames; the cap allows three rings at different heights |
+| `display`: 18 × 12 ft, seen from the front within the angle caps (±75° sideways, 0 to 75° up) | 10% of the frame width | 450 | Worked out, not measured: three passes at different distances across the ±75° arc (about 144 + 141 + 50 frames) and 80 for walk-ins to the hotspots, 415 in all. About a dozen stills come on top |
+
+The object numbers come from one test (`scan-pipeline/spacing_study.sh`,
+2026-11-21): an 11-second iPhone 15 Pro video round a folding chair, 150
+frames. The same scan was trained from every frame, every 2nd, 4th, 8th and
+16th, and each model was scored on 15 frames none of them saw (7,000 steps,
+500,000 splats):
+
+| Frames | Spacing (frame width) | Placed by stage 2 on their own | Stage 2 time | PSNR on unseen frames |
+| --- | --- | --- | --- | --- |
+| 135 | 2.3% | 135 of 135 | 172 s | 29.13 |
+| 68 | 4.6% | 68 of 68 | 77 s | 28.72 |
+| 34 | 9.2% | 24 of 34, in 3 pieces | 39 s | 28.16 |
+| 17 | 18.4% | 5 of 17 | 18 s | 27.19 |
+| 9 | 36.8% | none | 11 s | 24.29 |
+
+What limits the thinning is stage 2, not the picture quality: at 9.2% the
+frames no longer connect into one model, while the score has barely moved.
+(The scores above all used the full scan's camera positions, so they show
+what the splat loses, not what stage 2 loses.) Doubling from 68 to 135
+frames bought 0.4 dB. That chair is a hard case: plain surfaces, and
+blurred by a fast walk. The display number has not been tested on a video of
+a display; run `spacing_study.sh` on the first real one and change
+`SUBJECTS` at the top of `video_to_frames.py` if it disagrees.
+
+```bash
+bash ~/sshah_workspace/projects/pipeline/spacing_study.sh $S        # after stage 2; about 40 min for 150 frames
+```
 
 Read what it prints. `soft` lists stretches where even the best frame is
 blurred next to its neighbours, and `fast` lists places where the picture
 jumped between kept frames. Both are given as times in the video, so that
 stretch can be shot again.
+
+An upright video is accepted, with a note, but only without `--stills`:
+a landscape still cropped to an upright shape keeps too little. Shoot the
+display in landscape.
 
 The stills carry the gravity data, which video does not have. An upright
 still is left out. A still with the phone held the other way up is turned
@@ -195,14 +281,35 @@ for one real camera. It matched 2,329 pairs where the default matches 8,128.
 That sample is photos, not video frames, and too small to show the time
 saved.
 
-Check before going on: `colmap model_analyzer --path $S/sparse/0` should list
-every photo as registered, and a quick Brush splat
+Check before going on: the script's last lines should say `placed: N of N
+photos`. If the photos split into several models it says so, and puts the
+largest at `sparse/0` (COLMAP numbers them in the order it started them, and
+on a test its model 0 was a stray pair of frames beside a model holding all
+68). A quick Brush splat
 (`scan-pipeline/README.md`) should show no doubled or ghosted structure.
 
 ## 3. Depth targets
 
 The trainer gets a depth target per photo so that surfaces land at the right
 distance. It comes from two sources.
+
+All of this stage is one command, which runs the steps below in order:
+
+```bash
+bash ~/sshah_workspace/projects/pipeline/depth-targets.sh $S
+```
+
+| Option (environment variable) | Default | What it does |
+| --- | --- | --- |
+| `HOLDOUT=a.jpg,b.jpg` | none | Photos kept out of the stereo, so a held-back score in stage 4 stays honest |
+| `DEPTH_SIZE` | 1600 | Longest side of the depth maps, in pixels. 2400 was used for the 15 photos of 2025 |
+| `DEPTH_SOURCES` | 12 | How many other photos each photo is compared with |
+| `DEPTH_MIN_PIXELS` | 3 | Photos that must agree on a point. Use 2 for under 20 photos |
+
+It writes `$S/depth/all.npz` and `$S/depth/mono-all.npz` and deletes the
+depth maps, which are large. (The options are not called `SIZE` and so on
+because activating the tools already sets `SIZE` to something else.) The
+steps, as they were first run by hand:
 
 **Dense stereo** (COLMAP) gives accurate depth wherever two photos agree:
 
@@ -240,8 +347,40 @@ ever used where stereo has no point within about 8 px:
 CUDA_VISIBLE_DEVICES=1 python $S/tools/mono_depth.py $S $S/depth/all.npz $S/depth/mono-all.npz
 ```
 
-It downloads the model (25 M parameters, Apache-2.0) from Hugging Face the
-first time. The fit error it prints was 1.5 to 5% per photo in 2025.
+The model needs the `transformers` package, which the main tools do not
+have. In 2025 it went into a small environment of its own, which this
+document did not record until the chair test tripped over it:
+`python -m venv --system-site-packages venv-mono && venv-mono/bin/pip install transformers`,
+in `~/sshah_workspace/projects/annakut-2025-splat-v1/`, with the model kept
+in `hf-cache/` beside it (`HF_HOME`). `depth-targets.sh` looks there, or
+takes `MONO_PYTHON=<that python>`; by hand, use that python in the command
+above. It downloads the model (25 M parameters, Apache-2.0) from Hugging
+Face the first time. The fit error it prints was 1.5 to 5% per photo in 2025.
+
+**Is it worth the time?** Tested 2026-11-21 on the chair: 68 frames, 7,000
+steps, scored on 15 frames held back. The stage took 33 minutes (27 of them
+dense stereo, about 24 s per frame on the GTX 1080), against 6 to 8 minutes
+for the training itself.
+
+| Run | PSNR | SSIM | LPIPS (lower is better) | Splats |
+| --- | --- | --- | --- | --- |
+| No depth, run twice | 28.72 and 29.30 | 0.946 | 0.254 and 0.253 | 197,000 |
+| Depth loss, sparse start (the 2025 recipe, stage 4) | 29.14 | 0.946 | 0.256 | 197,000 |
+| Depth loss, started from 400,000 stereo points | 29.84 | 0.957 | 0.181 | 500,000 |
+
+The two no-depth runs differ by 0.6 dB with nothing changed, so the 2025
+recipe did nothing measurable here. Starting from the stereo points was
+sharper from the angles the video filmed, partly because it ends with more
+splats. But both depth runs put a false white sheet from the seat's edge
+down to the floor, plain to see from the side at seat height, which is a
+view the video never took and the score never tests.
+
+So: **no depth for small objects** (`object.sh` leaves it out). A
+free-standing object is all edges, and that is where depth from above goes
+wrong. **For the display, keep it as in 2025**, where it helped slightly: a
+display is one deep relief seen from the front. At 24 s per frame the stereo
+for 450 frames is about 3 hours, so on the first real capture hold two
+frames back and train both ways before paying that every time.
 
 ## 4. Train
 
@@ -341,7 +480,36 @@ The boundary is built from the model's own "solid" splats: opaque (over 0.5)
 and small (largest axis under 0.05 units). Those are surfaces the photos saw
 clearly. Floaters and haze are faint or large.
 
-First measure where the display ends:
+Crop with nothing typed in:
+
+```bash
+python3 scan-pipeline/refine/crop_hull.py level.ply cropped.ply --report crop.json
+```
+
+It finds the display as the largest connected lump of solid splats: the
+display is one lump, and the hall's walls, ceiling and furniture are
+separate, smaller ones unless they touch it. It then measures the tight box
+round that lump (the slices along each axis holding at least 2% as many
+solid splats as the fullest) and, outside that box, keeps only small splats
+right next to solid surfaces. `crop.json` records the boxes it used.
+
+Checked 2026-11-21 against the 2025 crop, whose boxes were set by eye: of
+864,936 splats the hand-set crop kept 848,702 and the automatic one 846,307.
+From the front, both sides and above the two look the same, with one
+difference: the automatic crop loses the centre dome above the canopy. That
+dome is drawn with thin faint splats that no measure tells from the streaks
+round it, and in 2025 it had to be named by hand as well. So after an
+automatic crop, look for a real part that went missing, and name it:
+
+```bash
+python3 scan-pipeline/refine/crop_hull.py level.ply cropped.ply --keep-box=-0.8,5.5,-2.2,0.8,7.05,-1.35
+```
+
+The lump rule has been tried on that one model. It will fail where the
+display touches something solid that is not part of it, such as a backdrop
+or a wall the photos saw well: the lump then includes it, and `lump_box` in
+the report is larger than the display. Set the boxes by hand in that case.
+`measure_box.py` shows where the display ends:
 
 ```bash
 python3 scan-pipeline/refine/measure_box.py level.ply
@@ -349,14 +517,10 @@ python3 scan-pipeline/refine/measure_box.py level.ply --box=-4.75,0.5,-3.75,4.5,
 ```
 
 The first form prints how many solid splats lie in each 0.25-unit slice along
-x, y and z, and a first guess at the box where the count drops away. Check it
-against the picture: on the 2025 model the guess matched the box chosen by
-eye on three sides, was one slice off on two, and two slices low at the
-floor. The second form counts what lies outside a box, by side, and how much
-of it is solid. Many splats with few solid ones is haze. Mostly solid means
-the box is cutting something real.
-
-Then crop:
+x, y and z, and a first guess at the box where the count drops away. The
+second form counts what lies outside a box, by side, and how much of it is
+solid. Many splats with few solid ones is haze. Mostly solid means the box is
+cutting something real. The 2025 crop, with every box given:
 
 ```bash
 python3 scan-pipeline/refine/crop_hull.py level.ply cropped.ply \
@@ -366,9 +530,9 @@ python3 scan-pipeline/refine/crop_hull.py level.ply cropped.ply \
 
 | Option | What to give it |
 | --- | --- |
-| `--box` (repeatable) | Loose limits for which solid splats count as the display. Generous, but not reaching the walls, ceiling or furniture beside it. The second box admits the domes above the canopy without admitting the ceiling next to them |
-| `--fringe-box` | The tight box from `measure_box.py`. Outside it, only small splats right next to solid surfaces stay |
-| `--keep-box` | A region exempt from the fringe rule, for a real part drawn with thin faint splats. In 2025 the centre dome looked exactly like the streaks round it by every measure, so it had to be named |
+| `--box` (repeatable) | Loose limits for which solid splats count as the display, in place of the lump rule. Generous, but not reaching the walls, ceiling or furniture beside it. The second box admits the domes above the canopy without admitting the ceiling next to them |
+| `--fringe-box` | The tight box. Outside it, only small splats right next to solid surfaces stay. Measured when no `--box` is given; `none` turns the rule off |
+| `--keep-box` (repeatable) | A region exempt from the fringe rule, for a real part drawn with thin faint splats |
 
 How it decides. Heights are cut into bands 0.25 units tall. Each band keeps
 the outline, seen from above, of the solid splats near its height, grown by
@@ -383,12 +547,63 @@ covering the hall and the white streaks over the shrine.
 Check the result by loading it (stage 6) and looking from the front, both
 sides and above for cut edges and for anything real that went missing.
 
+### 5d. A small object: crop and stand it up (gpu machine)
+
+For an object the camera walked round (stage 1b with `--subject object`).
+This replaces 5b and 5c: there is no gravity data and no box to set.
+`object.sh` runs it as its last stage; by hand:
+
+```bash
+python $S/tools/crop_object.py $S $S/runs/final/ply/point_cloud_29999.ply $S/clean/object.ply --json $S/clean/object.json
+```
+
+Everything comes from the camera ring and the model. Lengths are in units of
+d, the usual distance from the cameras to the point they all look at:
+
+1. The floor is the flat sheet under the object that covers the most ground.
+   Its tilt gives true "up". On the test chair the cameras' own idea of up
+   was 12° off, which no height-based rule survives.
+2. The object is the largest connected lump of solid material above the
+   floor and inside the camera ring. "Solid" is judged per cell (0.02 d),
+   by adding up the opacity of the small splats in it: this trainer builds
+   surfaces from many faint splats, and on the chair the median splat had
+   an opacity of 0.02, so no single splat is solid.
+3. It keeps what lies within a short reach (0.05 d) of that lump, and drops
+   the floor, large splats (over 0.06 d) and the faintest (under 0.005).
+
+`object.json` gives `rotate` and `translate` for stage 6a, which stand the
+object on y = 0 at the origin with the first frame's camera in front, plus
+its radius, its height and a starting camera for the viewer's config.
+
+| Option | Default | What it does |
+| --- | --- | --- |
+| `--floor keep` | drop | Leave a disc of floor under the object. Only worth it if the floor came out well |
+| `--radius` | measured | Object radius in units of d, if the measured one is wrong |
+| `--reach`, `--max-scale`, `--min-opacity` | 0.05, 0.06, 0.005 | The three limits in step 3 |
+| `--no-fog-rule` | off | Keep everything inside the cylinder round the object |
+
+Tested 2026-11-21 on five models of the chair (150 and 68 frames, 7,000
+and 30,000 steps, with and without depth): each time the room, the floor and
+the streaks beside the chair went and the chair stayed whole, with the floor
+found at the same 12° tilt. Some wisps stay round the feet. It has not seen
+any other object. `floor_found: false` in
+the output means it fell back to a guess for the floor; check the result.
+View limits are still set by hand in the scene's config (6c).
+
 ## 6. Web scene: build, viewer, angle caps, rotating view, device check
 
 ### 6a. Build the streamed scene
 
 ```bash
 sh scripts/build-scene.sh cropped.ply site/scene-last-year-v3
+```
+
+`ROTATE` and `TRANSLATE` in front of it stand a model upright and move it
+onto the origin as it is built, for a model that was not levelled in stage 5
+(the small-object crop in 5d prints both):
+
+```bash
+ROTATE=-85.76,-63.66,-1.18 TRANSLATE=-0.07,0.28,0.07 sh scripts/build-scene.sh object.ply site/scene-object
 ```
 
 This is what keeps the render light enough for a phone:
@@ -713,13 +928,23 @@ Never commit photos, their JPEG copies, or any `.ply`.
 - The whole chain has been run once, on one set of 15 photos. It has not been
   run on a full capture of several hundred photos.
 - The video route (stage 1b and `MATCHER=sequential`) was written on
-  2026-11-21 and has not been run on a real video. `video_to_frames.py` was
-  tested on a made-up video with known movement, pauses and blur: it measured
-  the movement to within 4%, kept the sharp frames, and flagged the blurred
-  stretch. Not tested: a real iPhone file, whether video frames give as good
-  a model as stills, and a still taken with the phone the other way up (the
-  arithmetic was checked, not a photo). The home rehearsal should shoot the
-  same table both ways and compare held-back scores (stage 4).
+  2026-11-21. It has been run on one real video: 11 seconds round a folding
+  chair, upright, HDR, iPhone 15 Pro. All 150 frames were placed in 3.2
+  minutes and a 7,000-step model scored 28.9 dB on held-back frames. Not
+  tested: a video of a display, video with stills (the chair had none),
+  whether video frames give as good a model as stills, and a still taken
+  with the phone the other way up (the arithmetic was checked, not a
+  photo). The home rehearsal should shoot the same table both ways and
+  compare held-back scores (stage 4).
+- The small-object route (`object.sh`, `crop_object.py`,
+  `scripts/object-scene.sh`), the automatic display crop, the frame caps,
+  `depth-targets.sh` and `spacing_study.sh` were all written on 2026-11-21
+  and tested on that one chair video (the display crop on the 2025 model).
+  The chair was filmed in one fast ring from above, so nothing here has seen
+  a three-ring capture, a 1 ft object, or an object on a table.
+- The environment for the monocular depth model (`venv-mono`, stage 3) lives
+  inside the 2025 project folder on the gpu machine. Deleting that folder
+  breaks `depth-targets.sh` until `MONO_PYTHON` points at a new one.
 - `scripts/device-check.mjs` (6e) was written on 2026-11-21 and has been run
   on the 2025 model only, locally and on the live site. Safari's WebGPU
   streaks were seen on one iPhone; why they happen was not found.

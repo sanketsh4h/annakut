@@ -7,3 +7,8 @@ site/scene-test/
 # Source splats are over GitHub's 100 MB file limit. Only the converted
 # site/scene-*/ folders go in the repo.
 *.ply
+# Test scenes from the chair video and throwaway comparisons stay local.
+site/scene-chair-*/
+site/chair-*.json
+site/scene-tmp-*/
+site/tmp-*.json
