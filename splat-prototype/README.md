@@ -3,8 +3,13 @@
 A phone-friendly web page that shows a Gaussian splat scan with tappable,
 bilingual (English / Gujarati) hotspots.
 
-- **Default scene:** the 2025 Annakut, version 2 (`site/last-year-v2.json`,
-  `site/scene-last-year-v2/`, 34 MB). Version 1 cropped to a 3D boundary round
+- **Default scene:** the 2026 Annakut (`site/annakut-2026.json`,
+  `site/scene-annakut-2026/`, 34 MB, 822,794 splats). Made on 2026-11-21 from
+  18 short videos and 10 still photos of the 18 x 12 ft display: 347 images,
+  all placed, trained without depth targets. On four frames held back from
+  training it scores 24.9 dB PSNR. Same turn and pan limits as the 2025 scene.
+- **The 2025 Annakut, version 2** (`?config=last-year-v2`,
+  `site/scene-last-year-v2/`, 34 MB): the default until then. Version 1 cropped to a 3D boundary round
   the display (below), so the hall's walls, ceiling and floor and the haze
   round the display are gone: 848,702 splats are left. Same turn and pan
   limits as v1; the zoom is set from the screen (the display fills 75% of it
@@ -86,8 +91,9 @@ site/                 everything that gets deployed (plain static files)
   app.js              viewer setup, hotspots, info sheet, language toggle;
                       DEFAULT_CONFIG names the scene the page opens with
   styles.css
-  last-year-v2.json   the default scene: the 2025 Annakut, version 2
-  scene-last-year-v2/ its streamed scene: lod-meta.json plus chunk folders
+  annakut-2026.json   the default scene: the 2026 Annakut
+  scene-annakut-2026/ its streamed scene: lod-meta.json plus chunk folders
+  last-year-v2.json   the 2025 Annakut, version 2, with scene-last-year-v2/
   last-year-v1.json   version 1, with scene-last-year-v1/
   last-year-v0.json   version 0, with scene-last-year-v0/
   hotspots.json       the sample scene: scene file, starting view, hotspot

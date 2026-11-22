@@ -26,7 +26,7 @@ import { Mat4, OrbitController, Picker, Vec2, Vec3 } from 'playcanvas';
 // The scene the page opens with: site/<name>.json. Scene descriptions and
 // their folders are versioned (last-year-v0, last-year-v1, ...), so putting a
 // better model live is a change to this one line.
-const DEFAULT_CONFIG = 'last-year-v2';
+const DEFAULT_CONFIG = 'annakut-2026';
 
 const params = new URLSearchParams(location.search);
 const $ = (id) => document.getElementById(id);
