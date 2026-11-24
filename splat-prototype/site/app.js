@@ -35,6 +35,7 @@ const STRINGS = {
     en: {
         title: 'Annakut Darshan',
         reset: 'Reset view',
+        models: 'Exhibit models ›',
         loading: 'Loading 3D scene…',
         hint: 'Drag to look around · pinch to zoom · tap a glowing point',
         hintPlain: 'Drag to look around · pinch to zoom',
@@ -52,6 +53,7 @@ const STRINGS = {
     gu: {
         title: 'અન્નકૂટ દર્શન',
         reset: 'મૂળ દૃશ્ય',
+        models: 'પ્રદર્શન મોડેલ્સ ›',
         loading: '3D દૃશ્ય લોડ થઈ રહ્યું છે…',
         hint: 'ફેરવવા માટે ખેંચો · ઝૂમ માટે પિંચ કરો · ઝબકતા બિંદુ પર ટૅપ કરો',
         hintPlain: 'ફેરવવા માટે ખેંચો · ઝૂમ માટે પિંચ કરો',
@@ -674,6 +676,8 @@ async function main() {
         document.body.dataset.lang = lang;
         $('site-title').textContent = t('title');
         $('reset').textContent = t('reset');
+        // A copy of index.html cached from before the link was added has no such element.
+        if ($('models-link')) $('models-link').textContent = t('models');
         $('loading-label').textContent = t('loading');
         $('prev-label').textContent = t('prev');
         $('next-label').textContent = t('next');

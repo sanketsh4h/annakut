@@ -195,6 +195,30 @@ body.ready .marker.show {
   text-overflow: ellipsis;
 }
 
+/* The title, with the link to the exhibit models under it. */
+.topbar-title {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.models-link {
+  pointer-events: auto;
+  padding: 5px 0;
+  color: var(--gold);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+  white-space: nowrap;
+}
+
+.models-link:hover,
+.models-link:focus-visible {
+  text-decoration: underline;
+}
+
 .topbar-actions {
   display: flex;
   gap: 8px;
