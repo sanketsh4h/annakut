@@ -22,12 +22,12 @@
   "hotspots": [],
   "viewLimits": {
     "yaw": [
-      -57,
-      52
+      -50.0,
+      45.0
     ],
     "pitch": [
-      9,
-      70
+      14.0,
+      46.0
     ],
     "ground": 0,
     "focusBox": {
