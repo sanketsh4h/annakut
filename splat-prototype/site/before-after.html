@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Annakut Darshan · Before and after</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0b0b0e" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <!-- The exhibit models side by side: the first published version (model-NN-v0) on the left, the refined
+         one now on the site (model-NN) on the right, with one camera for both. Data: before-after.json,
+         written by models-2026/compare/make-static.py. The viewer pages are not changed: this page adds a
+         small script to each viewer frame (same origin) that reads and sets its orbit camera. -->
+    <style>
+      :root {
+        --ink: #f5f5f7;
+        --ink-soft: rgba(245, 245, 247, 0.72);
+        --line: rgba(255, 255, 255, 0.14);
+        --gold: #ffdf00;
+        --panel: #15151b;
+        --tile: #0f0d0d;
+      }
+      * { box-sizing: border-box; }
+      [hidden] { display: none !important; }
+      html { background: #0b0b0e; }
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        padding: calc(16px + env(safe-area-inset-top, 0px)) calc(16px + env(safe-area-inset-right, 0px))
+          calc(28px + env(safe-area-inset-bottom, 0px)) calc(16px + env(safe-area-inset-left, 0px));
+        background: #0b0b0e;
+        color: var(--ink);
+        font: 15px/1.45 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        -webkit-text-size-adjust: 100%;
+      }
+      main { max-width: 1400px; margin: 0 auto; }
+      header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 20px; margin-bottom: 14px; }
+      h1 { margin: 0; font-size: 1.35rem; font-weight: 700; letter-spacing: -0.01em; }
+      .lead { margin: 4px 0 0; color: var(--ink-soft); font-size: 0.92rem; }
+      a { color: var(--gold); text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      .btn { background: #1d1d25; color: var(--ink); border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; font: inherit; font-size: 0.85rem; cursor: pointer; }
+      .btn:hover { border-color: rgba(255, 255, 255, 0.3); }
+
+      #compare { margin-bottom: 18px; }
+      .cmp-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 8px; }
+      .cmp-head h2 { margin: 0; font-size: 1.1rem; }
+      .cmp-head .spacer { flex: 1; }
+      label.tog { display: inline-flex; gap: 6px; align-items: center; color: var(--ink-soft); font-size: 0.85rem; cursor: pointer; }
+      .panes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; height: min(64vh, 760px); }
+      .pane { position: relative; background: var(--tile); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; min-height: 260px; }
+      .pane.lead { border-color: var(--gold); }
+      .pane iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+      .tag { position: absolute; left: 10px; top: 10px; z-index: 2; background: rgba(11, 11, 14, 0.82); border: 1px solid var(--line); border-radius: 8px; padding: 4px 9px; font-size: 0.78rem; pointer-events: none; max-width: calc(100% - 20px); }
+      .tag b { font-weight: 650; }
+      .changed { margin: 8px 0 0; color: var(--ink-soft); font-size: 0.9rem; max-width: 1000px; }
+      .changed b { color: var(--ink); }
+      .views { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; align-items: center; }
+      .views .lbl { color: var(--ink-soft); font-size: 0.8rem; margin-right: 4px; }
+      .views .btn { padding: 3px 8px; font-size: 0.75rem; }
+
+      #grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+      .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 10px; cursor: pointer; display: flex; flex-direction: column; gap: 8px; color: inherit; text-align: left; font: inherit; }
+      .card:hover, .card:focus-visible { border-color: rgba(255, 255, 255, 0.32); outline: none; }
+      .card.sel { border-color: var(--gold); }
+      .card .top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+      .card .name { font-weight: 650; }
+      .card .kind { font-size: 0.75rem; color: var(--ink-soft); }
+      .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+      .shot { position: relative; aspect-ratio: 4 / 3; background: var(--tile); border-radius: 8px; overflow: hidden; border: 1px solid var(--line); }
+      .shot img { width: 100%; height: 100%; object-fit: cover; display: block; }
+      .shot .cap { position: absolute; left: 6px; top: 6px; font-size: 0.7rem; background: rgba(11, 11, 14, 0.8); padding: 1px 7px; border-radius: 6px; }
+      .card .why { color: var(--ink-soft); font-size: 0.8rem; }
+      .foot { color: var(--ink-soft); font-size: 0.8rem; margin-top: 18px; }
+
+      @media (max-width: 760px) {
+        .panes { grid-template-columns: 1fr; height: auto; }
+        .pane { height: 44vh; }
+        .tag { max-width: 60%; font-size: 0.72rem; }
+        #grid { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <h1>Exhibit models: before and after</h1>
+          <p class="lead">Left: the model as first published. Right: the refined model, now on the site. Pick a model; drag either side and the other follows.</p>
+        </div>
+        <a href="models.html">‹ All exhibit models</a>
+      </header>
+
+      <section id="compare" hidden aria-label="Before and after in 3D">
+        <div class="cmp-head">
+          <h2 id="cmp-title">Model</h2>
+          <label class="tog"><input id="link" type="checkbox" checked /> one camera for both</label>
+          <button class="btn" id="same-start" type="button">Both to the start view</button>
+          <span class="spacer"></span>
+          <a id="open-new" href="#" target="_blank" rel="noopener">Open the refined model ›</a>
+          <button class="btn" id="close" type="button">Close ✕</button>
+        </div>
+        <div class="panes">
+          <div class="pane" id="pane-a"><iframe id="fa" title="Before"></iframe><div class="tag" id="tag-a"></div></div>
+          <div class="pane" id="pane-b"><iframe id="fb" title="After"></iframe><div class="tag" id="tag-b"></div></div>
+        </div>
+        <p class="changed" id="changed"></p>
+        <div class="views" id="views"></div>
+      </section>
+
+      <div id="grid" aria-label="All exhibit models"></div>
+      <p class="foot">Each side keeps its own viewing limits: the refined models stop a little past the angles that were filmed, where the first versions blurred.
+        The small pictures show the same view before and after.</p>
+    </main>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const num = (nn) => String(Number(nn));
+      const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+      const lim = (l) => `yaw ${l.yaw[0]}° to ${l.yaw[1]}°, pitch ${l.pitch[0]}° to ${l.pitch[1]}°`;
+      let models = [], sel = null, lead = 'a', lastStamp = -1;
+
+      // Added to each viewer frame: finds the orbit camera the viewer drives and lets this page read and set it.
+      const HOOK = `
+        import { OrbitController, Pose, Vec3 } from 'playcanvas';
+        let ctl = null, last = null, stamp = 0;
+        const update = OrbitController.prototype.update;
+        OrbitController.prototype.update = function (frame, dt) {
+          ctl = this;
+          const pose = update.call(this, frame, dt);
+          if (pose && (!last || !pose.position.equals(last.p) || !pose.angles.equals(last.a) || Math.abs(pose.distance - last.d) > 1e-6)) {
+            last = { p: pose.position.clone(), a: pose.angles.clone(), d: pose.distance }; stamp++;
+          }
+          return pose;
+        };
+        window.__cmp = {
+          ready: () => !!ctl && !!last,
+          stamp: () => stamp,
+          get: () => last ? { p: [last.p.x, last.p.y, last.p.z], a: [last.a.x, last.a.y, last.a.z], d: last.d } : null,
+          set: (s) => { if (!ctl || !s) return; const pose = new Pose(); pose.position.set(...s.p); pose.angles.set(...s.a); pose.distance = s.d; ctl.attach(pose, false); },
+          look: (from, to) => { if (!ctl) return; const pose = new Pose(); pose.look(new Vec3(...from), new Vec3(...to)); ctl.attach(pose, false); }
+        };`;
+      const HIDE = '#hint,#lang,.walk{display:none!important}.topbar-title{visibility:hidden!important}';
+
+      function frame(side) { return side === 'a' ? $('fa') : $('fb'); }
+      function cmpOf(side) {
+        try { const w = frame(side).contentWindow; return w && w.__cmp && w.__cmp.ready() ? w.__cmp : null; } catch { return null; }
+      }
+      function setLead(side) {
+        if (lead !== side) { lead = side; lastStamp = -1; }
+        $('pane-a').classList.toggle('lead', lead === 'a' && $('link').checked);
+        $('pane-b').classList.toggle('lead', lead === 'b' && $('link').checked);
+      }
+
+      function load(side, config) {
+        const f = frame(side);
+        f.onload = () => {
+          let d;
+          try { d = f.contentDocument; } catch { return; }
+          if (!d || !d.head) return;
+          const s = d.createElement('script'); s.type = 'module'; s.textContent = HOOK; d.head.appendChild(s);
+          const st = d.createElement('style'); st.textContent = HIDE; d.head.appendChild(st);
+          for (const ev of ['pointerdown', 'wheel', 'touchstart', 'keydown']) d.addEventListener(ev, () => setLead(side), { passive: true, capture: true });
+        };
+        f.src = config ? `index.html?config=${config}` : 'about:blank';
+      }
+
+      function loop() {
+        if (sel && $('link').checked) {
+          const L = cmpOf(lead), F = cmpOf(lead === 'a' ? 'b' : 'a');
+          if (L && F) { const s = L.stamp(); if (s !== lastStamp) { F.set(L.get()); lastStamp = s; } }
+        }
+        requestAnimationFrame(loop);
+      }
+
+      function renderGrid() {
+        const g = $('grid');
+        g.innerHTML = '';
+        for (const m of models) {
+          const card = document.createElement('button');
+          card.type = 'button';
+          card.className = 'card' + (m.nn === sel ? ' sel' : '');
+          card.innerHTML = `<div class="top"><span class="name">Model ${num(m.nn)}</span><span class="kind">${m.retrained ? 'retrained' : 'cleaned up'}</span></div>
+            <div class="pair">
+              <div class="shot"><img loading="lazy" src="images/before-after/model-${m.nn}-before.jpg" alt="Model ${num(m.nn)} before"><span class="cap">before</span></div>
+              <div class="shot"><img loading="lazy" src="images/before-after/model-${m.nn}-after.jpg" alt="Model ${num(m.nn)} after"><span class="cap">after</span></div>
+            </div>
+            <div class="why">${esc(m.changed)}</div>`;
+          card.addEventListener('click', () => select(m.nn));
+          g.appendChild(card);
+        }
+      }
+
+      function select(nn) {
+        const m = models.find((x) => x.nn === nn);
+        if (!m) return;
+        if (sel !== nn) {
+          sel = nn;
+          load('a', m.before);
+          load('b', m.after);
+          setLead('a');
+          renderViews(m);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+        history.replaceState(null, '', '#m' + nn);
+        $('compare').hidden = false;
+        $('cmp-title').textContent = `Model ${num(nn)}`;
+        $('tag-a').innerHTML = `<b>Before</b> · ${lim(m.old)}`;
+        $('tag-b').innerHTML = `<b>After</b> · ${lim(m.new)}`;
+        $('changed').innerHTML = `<b>What changed:</b> ${esc(m.changed)}`;
+        $('open-new').href = `index.html?config=${m.after}`;
+        renderGrid();
+      }
+
+      function renderViews(m) {
+        const box = $('views');
+        box.innerHTML = '<span class="lbl">Jump to a view:</span>';
+        for (const v of m.views) {
+          const b = document.createElement('button');
+          b.className = 'btn'; b.type = 'button'; b.textContent = v.label;
+          b.onclick = () => {
+            const from = v.cam.slice(0, 3), to = v.cam.slice(3, 6);
+            const A = cmpOf('a'), B = cmpOf('b');
+            if (A) A.look(from, to);
+            if (B) B.look(from, to);
+            setLead('a'); lastStamp = -1;
+          };
+          box.appendChild(b);
+        }
+      }
+
+      $('link').addEventListener('change', () => { setLead(lead); lastStamp = -1; });
+      $('same-start').addEventListener('click', () => {
+        for (const side of ['a', 'b']) { try { frame(side).contentDocument.getElementById('reset').click(); } catch { /* not loaded */ } }
+      });
+      $('close').addEventListener('click', () => {
+        sel = null; history.replaceState(null, '', location.pathname);
+        $('compare').hidden = true; load('a', null); load('b', null); renderGrid();
+      });
+
+      fetch('before-after.json', { cache: 'no-cache' }).then((r) => r.json()).then((d) => {
+        models = d.models;
+        renderGrid();
+        const h = location.hash.match(/^#m(\d\d)$/);
+        if (h) select(h[1]);
+      }).catch(() => { $('grid').textContent = 'The list of models could not be loaded.'; });
+      requestAnimationFrame(loop);
+    </script>
+  </body>
+</html>

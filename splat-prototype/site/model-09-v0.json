@@ -1,0 +1,50 @@
+{
+  "scene": "scene-model-09-v0/lod-meta.json",
+  "background": [
+    0.06,
+    0.05,
+    0.05
+  ],
+  "initialCamera": {
+    "position": [
+      0,
+      6.156,
+      11.64
+    ],
+    "target": [
+      0,
+      0.728,
+      0
+    ],
+    "fov": 60
+  },
+  "fitPortrait": false,
+  "hotspots": [],
+  "viewLimits": {
+    "yaw": [
+      -57,
+      54
+    ],
+    "pitch": [
+      4,
+      67
+    ],
+    "ground": 0,
+    "focusBox": {
+      "min": [
+        -4.22,
+        0,
+        -4.22
+      ],
+      "max": [
+        4.22,
+        1.46,
+        4.22
+      ]
+    },
+    "distance": [
+      3.21,
+      19.27
+    ]
+  }
+}
